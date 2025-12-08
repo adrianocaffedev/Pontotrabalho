@@ -1,16 +1,20 @@
 
 import React, { useState } from 'react';
-import { TimeLog } from '../types';
-import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock } from 'lucide-react';
+import { TimeLog, AppUser } from '../types';
+import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock, Edit3, Calendar, FileText } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface LogHistoryProps {
   logs: TimeLog[];
+  user?: AppUser | null;
   onDelete: (id: string) => void;
+  onEdit: (log: TimeLog) => void;
   onAddManual: () => void;
   currentLogId: string | null;
 }
 
-const LogHistory: React.FC<LogHistoryProps> = ({ logs, onDelete, onAddManual, currentLogId }) => {
+const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, onAddManual, currentLogId }) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const handleDownloadBackup = () => {
@@ -28,9 +32,89 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, onDelete, onAddManual, cu
     downloadAnchorNode.remove();
   };
 
+  const handleExportPDF = () => {
+    if (logs.length === 0) return;
+
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(40, 40, 40);
+    doc.text("Relatório de Ponto", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    const dateStr = new Date().toLocaleDateString('pt-BR');
+    doc.text(`Data de Emissão: ${dateStr}`, 14, 28);
+    
+    if (user) {
+        doc.text(`Funcionário: ${user.name}`, 14, 33);
+    }
+
+    // Data Processing for Table
+    const sortedLogs = [...logs].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    
+    const tableRows = sortedLogs.map(log => {
+        const dateObj = new Date(log.startTime);
+        const dayDate = dateObj.toLocaleDateString('pt-BR');
+        const weekDay = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).toUpperCase();
+        
+        const startTime = new Date(log.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const endTime = log.endTime ? new Date(log.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '---';
+        
+        // Duration
+        const hours = Math.floor(log.totalDurationMs / (1000 * 60 * 60));
+        const minutes = Math.floor((log.totalDurationMs % (1000 * 60 * 60)) / (1000 * 60));
+        const duration = `${hours}h ${minutes}m`;
+
+        // Breaks
+        const breaks = log.breaks.map(b => {
+            const bStart = new Date(b.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const bEnd = b.endTime ? new Date(b.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '?';
+            const type = b.type === 'LUNCH' ? 'Alm' : 'Caf';
+            return `${type}: ${bStart}-${bEnd}`;
+        }).join('\n');
+        
+        // Notes / Absences
+        const notes = log.absences.map(a => `[${a.type === 'FULL_DAY' ? 'FALTA' : 'PARCIAL'}] ${a.reason}`).join('\n');
+
+        return [
+            `${dayDate}\n${weekDay}`,
+            startTime,
+            endTime,
+            breaks,
+            duration,
+            notes
+        ];
+    });
+
+    autoTable(doc, {
+        head: [['Data', 'Entrada', 'Saída', 'Pausas', 'Total', 'Obs']],
+        body: tableRows,
+        startY: 40,
+        styles: { fontSize: 9, cellPadding: 3, valign: 'middle' },
+        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+        columnStyles: {
+            0: { cellWidth: 25 },
+            3: { cellWidth: 40 },
+            5: { cellWidth: 'auto' }
+        },
+        alternateRowStyles: { fillColor: [245, 247, 255] }
+    });
+
+    doc.save(`relatorio_ponto_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   const formatTime = (isoString?: string) => {
     if (!isoString) return '--:--';
     return new Date(isoString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const str = date.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+    return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
   const calculateDuration = (ms: number) => {
@@ -56,6 +140,15 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, onDelete, onAddManual, cu
             
             {logs.length > 0 && (
               <>
+                <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/60 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-300 active:scale-95 border border-white/40 dark:border-white/10 backdrop-blur-sm group cursor-pointer shadow-sm"
+                    title="Exportar PDF"
+                >
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wide hidden sm:inline group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">PDF</span>
+                    <FileText size={16} strokeWidth={2} />
+                </button>
+
                 <button
                     onClick={handleDownloadBackup}
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/60 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-300 active:scale-95 border border-white/40 dark:border-white/10 backdrop-blur-sm group cursor-pointer shadow-sm"
@@ -97,20 +190,30 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, onDelete, onAddManual, cu
               )}
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 relative z-10 pl-2">
-                  {/* Time Section */}
-                  <div className="flex items-center gap-4 sm:gap-6 min-w-auto sm:min-w-[150px] w-full sm:w-auto justify-between sm:justify-start">
-                      <div>
-                          <div className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tighter leading-none transition-colors">
-                              {formatTime(log.startTime)}
-                          </div>
-                          <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1 sm:mt-1.5">Entrada</div>
+                  {/* Time Section with Date */}
+                  <div className="flex flex-col gap-2 w-full sm:w-auto">
+                      {/* Date Badge */}
+                      <div className="flex items-center gap-2">
+                          <Calendar size={12} className="text-indigo-500/80 dark:text-indigo-400/80" />
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                              {formatDate(log.date)}
+                          </span>
                       </div>
-                      <div className="h-8 sm:h-10 w-[1px] bg-slate-200 dark:bg-slate-700/50"></div>
-                      <div>
-                          <div className={`text-2xl sm:text-3xl font-bold tracking-tighter leading-none ${log.endTime ? 'text-slate-800 dark:text-slate-100' : 'text-indigo-500 dark:text-indigo-400 animate-pulse'}`}>
-                              {log.endTime ? formatTime(log.endTime) : '...'}
+
+                      <div className="flex items-center gap-4 sm:gap-6 min-w-auto sm:min-w-[150px] justify-between sm:justify-start">
+                          <div>
+                              <div className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tighter leading-none transition-colors">
+                                  {formatTime(log.startTime)}
+                              </div>
+                              <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1 sm:mt-1.5">Entrada</div>
                           </div>
-                          <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1 sm:mt-1.5">Saída</div>
+                          <div className="h-8 sm:h-10 w-[1px] bg-slate-200 dark:bg-slate-700/50"></div>
+                          <div>
+                              <div className={`text-2xl sm:text-3xl font-bold tracking-tighter leading-none ${log.endTime ? 'text-slate-800 dark:text-slate-100' : 'text-indigo-500 dark:text-indigo-400 animate-pulse'}`}>
+                                  {log.endTime ? formatTime(log.endTime) : '...'}
+                              </div>
+                              <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1 sm:mt-1.5">Saída</div>
+                          </div>
                       </div>
                   </div>
 
@@ -141,51 +244,73 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, onDelete, onAddManual, cu
                           {calculateDuration(log.totalDurationMs)}
                       </span>
 
-                      {/* Lógica de Exclusão Inline */}
-                      {deleteId === log.id && !isCurrentLog ? (
-                        <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-200 absolute right-0 sm:relative bg-white dark:bg-slate-800 p-1.5 rounded-xl shadow-xl border border-rose-100 dark:border-rose-900/50 z-50">
-                           <button
-                              onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDelete(log.id);
-                                  setDeleteId(null);
-                              }}
-                              className="p-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 active:scale-95 transition-all shadow-sm"
-                              title="Confirmar exclusão"
-                           >
-                              <Check size={16} strokeWidth={3} />
-                           </button>
-                           <button
-                              onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteId(null);
-                              }}
-                              className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95 transition-all"
-                              title="Cancelar"
-                           >
-                              <X size={16} strokeWidth={3} />
-                           </button>
-                        </div>
-                      ) : (
-                        <button 
+                      {/* Botões de Ação */}
+                      <div className="flex items-center gap-1">
+                        {/* Botão Editar */}
+                        <button
                             type="button"
                             disabled={isCurrentLog}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (!isCurrentLog) {
-                                  setDeleteId(log.id);
-                                }
+                                onEdit(log);
                             }}
-                            className={`relative z-30 p-2.5 rounded-xl transition-all duration-300
-                              ${isCurrentLog 
-                                ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
-                                : 'text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md active:scale-90'
+                            className={`p-2 rounded-xl transition-all duration-300
+                              ${isCurrentLog
+                                ? 'hidden'
+                                : 'text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md active:scale-90'
                               }`
                             }
+                            title="Editar registro"
                         >
-                            {isCurrentLog ? <Lock size={18} /> : <Trash2 size={18} />}
+                            <Edit3 size={18} />
                         </button>
-                      )}
+
+                        {/* Lógica de Exclusão Inline */}
+                        {deleteId === log.id && !isCurrentLog ? (
+                          <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-200 absolute right-0 sm:relative bg-white dark:bg-slate-800 p-1.5 rounded-xl shadow-xl border border-rose-100 dark:border-rose-900/50 z-50">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDelete(log.id);
+                                    setDeleteId(null);
+                                }}
+                                className="p-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 active:scale-95 transition-all shadow-sm"
+                                title="Confirmar exclusão"
+                            >
+                                <Check size={16} strokeWidth={3} />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteId(null);
+                                }}
+                                className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95 transition-all"
+                                title="Cancelar"
+                            >
+                                <X size={16} strokeWidth={3} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                              type="button"
+                              disabled={isCurrentLog}
+                              onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isCurrentLog) {
+                                    setDeleteId(log.id);
+                                  }
+                              }}
+                              className={`relative z-30 p-2 rounded-xl transition-all duration-300
+                                ${isCurrentLog 
+                                  ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                  : 'text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md active:scale-90'
+                                }`
+                              }
+                          >
+                              {isCurrentLog ? <Lock size={18} /> : <Trash2 size={18} />}
+                          </button>
+                        )}
+                      </div>
                   </div>
               </div>
 

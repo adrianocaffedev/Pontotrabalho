@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud } from 'lucide-react';
 import { AppSettings, AppUser } from '../types';
 import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword } from '../services/dataService';
 
@@ -12,9 +12,11 @@ interface SettingsModalProps {
   // User Management Props
   currentUser: AppUser | null;
   onSelectUser: (user: AppUser | null) => void;
+  // System Data
+  systemHolidays?: string[];
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, currentUser, onSelectUser }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, currentUser, onSelectUser, systemHolidays = [] }) => {
   const [activeTab, setActiveTab] = useState<'selection' | 'users' | 'general'>('selection');
 
   const [formData, setFormData] = useState<AppSettings>(settings);
@@ -483,9 +485,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         </div>
                     </div>
 
+                    {/* System Holidays - READ ONLY */}
+                    {systemHolidays && systemHolidays.length > 0 && (
+                        <div>
+                             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                                 <Cloud size={12} /> Feriados Nacionais (Automáticos)
+                             </label>
+                             <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto pr-1 scrollbar-hide bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-700/50">
+                                   {systemHolidays.map(date => (
+                                       <div key={date} className="flex items-center gap-1 bg-white dark:bg-slate-700 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm opacity-80 cursor-default" title="Feriado do Sistema (Automático)">
+                                           <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                               {new Date(date).toLocaleDateString('pt-BR')}
+                                           </span>
+                                       </div>
+                                   ))}
+                             </div>
+                        </div>
+                    )}
+
+                    {/* Manual Holidays - EDITABLE */}
                     <div>
                         <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
-                            <Calendar size={12} /> Feriados (100% Extras)
+                            <Calendar size={12} /> Feriados Manuais (Municipais/Outros)
                         </label>
                         
                         <div className="flex gap-2 mb-3">
@@ -521,7 +542,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-[10px] text-emerald-500/60 italic px-1">Nenhum feriado cadastrado.</p>
+                                <p className="text-[10px] text-emerald-500/60 italic px-1">Nenhum feriado manual cadastrado.</p>
                             )}
                         </div>
                     </div>

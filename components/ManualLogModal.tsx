@@ -1,16 +1,16 @@
 
-
-import React, { useState } from 'react';
-import { X, Save, Calendar, Clock, PlusCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Save, Calendar, Clock, PlusCircle, Edit3 } from 'lucide-react';
 import { TimeLog, Break } from '../types';
 
 interface ManualLogModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (log: TimeLog) => void;
+  initialLog: TimeLog | null; // Adicionado para edição
 }
 
-const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave }) => {
+const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave, initialLog }) => {
   // Correção de Data: Pega a data local considerando o offset do timezone, em vez de UTC
   const getLocalDate = () => {
     const d = new Date();
@@ -26,6 +26,56 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
   const [coffeeStartTime, setCoffeeStartTime] = useState('');
   const [coffeeEndTime, setCoffeeEndTime] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Helper para extrair HH:mm de ISO string
+  const formatTimeFromISO = (isoString?: string) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      if (initialLog) {
+        // Preencher dados para edição
+        setDate(initialLog.date);
+        setStartTime(formatTimeFromISO(initialLog.startTime));
+        setEndTime(formatTimeFromISO(initialLog.endTime));
+
+        // Reset breaks
+        setLunchStartTime('');
+        setLunchEndTime('');
+        setCoffeeStartTime('');
+        setCoffeeEndTime('');
+
+        // Find breaks
+        const lunch = initialLog.breaks.find(b => b.type === 'LUNCH');
+        if (lunch) {
+          setLunchStartTime(formatTimeFromISO(lunch.startTime));
+          setLunchEndTime(formatTimeFromISO(lunch.endTime));
+        }
+
+        const coffee = initialLog.breaks.find(b => b.type === 'COFFEE');
+        if (coffee) {
+          setCoffeeStartTime(formatTimeFromISO(coffee.startTime));
+          setCoffeeEndTime(formatTimeFromISO(coffee.endTime));
+        }
+
+      } else {
+        // Reset para novo registro
+        setDate(getLocalDate());
+        setStartTime('');
+        setEndTime('');
+        setLunchStartTime('');
+        setLunchEndTime('');
+        setCoffeeStartTime('');
+        setCoffeeEndTime('');
+      }
+    }
+  }, [isOpen, initialLog]);
 
   if (!isOpen) return null;
 
@@ -45,7 +95,8 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
     const value = e.target.value;
     setStartTime(value);
 
-    if (value) {
+    // Sugestão automática apenas se for NOVO registro
+    if (value && !initialLog) {
         const [h, m] = value.split(':').map(Number);
         if (!isNaN(h) && !isNaN(m)) {
             // Helper para formatar HH:mm
@@ -97,8 +148,10 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
             setError("O intervalo de almoço deve estar dentro da jornada de trabalho.");
             return;
         }
+        // Preserve ID if editing and exists, else generate
+        const existingLunch = initialLog?.breaks.find(b => b.type === 'LUNCH');
         breaks.push({
-            id: generateId(),
+            id: existingLunch ? existingLunch.id : generateId(),
             startTime: lunchStartDateTime.toISOString(),
             endTime: lunchEndDateTime.toISOString(),
             type: 'LUNCH'
@@ -118,8 +171,9 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
             setError("O intervalo de café deve estar dentro da jornada de trabalho.");
             return;
         }
+        const existingCoffee = initialLog?.breaks.find(b => b.type === 'COFFEE');
         breaks.push({
-            id: generateId(),
+            id: existingCoffee ? existingCoffee.id : generateId(),
             startTime: coffeeStartDateTime.toISOString(),
             endTime: coffeeEndDateTime.toISOString(),
             type: 'COFFEE'
@@ -130,12 +184,12 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
     const totalDurationMs = (endDateTime.getTime() - startDateTime.getTime()) - totalDeductionMs;
 
     const newLog: TimeLog = {
-      id: generateId(),
+      id: initialLog ? initialLog.id : generateId(), // Mantém ID se edição
       date: startDateTime.toISOString().split('T')[0],
       startTime: startDateTime.toISOString(),
       endTime: endDateTime.toISOString(),
       breaks,
-      absences: [],
+      absences: initialLog ? initialLog.absences : [], // Mantém ausências na edição simples
       totalDurationMs: Math.max(0, totalDurationMs),
     };
 
@@ -148,8 +202,8 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
       <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 dark:border-slate-700 transition-colors">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-             <PlusCircle className="text-indigo-500 dark:text-indigo-400" size={20} />
-             Adicionar Registro Manual
+             {initialLog ? <Edit3 className="text-indigo-500 dark:text-indigo-400" size={20} /> : <PlusCircle className="text-indigo-500 dark:text-indigo-400" size={20} />}
+             {initialLog ? 'Editar Registro' : 'Adicionar Registro Manual'}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 p-2 rounded-full transition-all">
             <X size={20} />
@@ -225,7 +279,7 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
             </button>
             <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center gap-2 text-sm active:scale-95 shadow-md">
               <Save size={18} />
-              Salvar Registro
+              {initialLog ? 'Salvar Alterações' : 'Salvar Registro'}
             </button>
           </div>
         </form>

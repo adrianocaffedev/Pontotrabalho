@@ -4,16 +4,15 @@ import { TimeLog, AppSettings, AppUser } from '../types';
 
 /* 
   NOTA IMPORTANTE DE BANCO DE DADOS:
-  1. Para salvar feriados: 
+  1. Para salvar feriados manuais: 
      alter table user_settings add column if not exists holidays text[];
      
   2. Para senha de ADMIN (sudo) no banco:
      create table if not exists app_config (id text primary key, value text not null);
      insert into app_config (id, value) values ('admin_password', '282904') on conflict (id) do nothing;
      
-     -- SE HOUVER ERRO DE PERMISSÃO/CONEXÃO NA VERIFICAÇÃO, EXECUTE (RLS):
-     alter table app_config enable row level security;
-     create policy "Allow public read access" on app_config for select using (true);
+  3. Para tabela de FERIADOS DO SISTEMA:
+     Rodar o script SQL de criação da tabela 'feriados'.
 */
 
 // Utilitários de conversão (DB Snake Case <-> App Camel Case)
@@ -180,11 +179,29 @@ export const deleteAppUser = async (id: string): Promise<{ success: boolean, err
   }
 };
 
+// --- Feriados do Sistema ---
+export const getSystemHolidays = async (): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('feriados')
+      .select('data');
+    
+    if (error) {
+      // Se a tabela não existir ainda, não quebra o app, retorna vazio
+      console.warn('System holidays fetch warning:', error.message);
+      return [];
+    }
+
+    return data ? data.map((d: any) => d.data) : [];
+  } catch (e) {
+    return [];
+  }
+};
 
 // --- Funções Principais de Dados ---
 
 export const fetchRemoteData = async (userId: string) => {
-  if (!userId) return { settings: null, logs: [] };
+  if (!userId) return { settings: null, logs: [], systemHolidays: [] };
 
   try {
     // 1. Fetch Settings
@@ -235,14 +252,18 @@ export const fetchRemoteData = async (userId: string) => {
       )
     ) || [];
 
+    // 5. Fetch System Holidays
+    const systemHolidays = await getSystemHolidays();
+
     return {
       settings: mapSettingsFromDb(settingsData),
-      logs: mappedLogs
+      logs: mappedLogs,
+      systemHolidays // Return separate list
     };
 
   } catch (error) {
     console.error('Fetch remote data error:', JSON.stringify(error, null, 2));
-    return { settings: null, logs: [] };
+    return { settings: null, logs: [], systemHolidays: [] };
   }
 };
 

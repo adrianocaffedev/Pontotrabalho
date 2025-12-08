@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WorkStatus, TimeLog, AnalysisResult, Break, AppSettings, Absence, AppUser } from './types';
 import Clock from './components/Clock';
@@ -89,9 +88,15 @@ const App: React.FC = () => {
   const [now, setNow] = useState(new Date());
   
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [systemHolidays, setSystemHolidays] = useState<string[]>([]); // Feriados globais do banco
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAbsenceModalOpen, setIsAbsenceModalOpen] = useState(false);
+  
+  // Manual Log & Edit State
   const [isManualLogModalOpen, setIsManualLogModalOpen] = useState(false);
+  const [editingLog, setEditingLog] = useState<TimeLog | null>(null);
+
   const [isLoadingData, setIsLoadingData] = useState(false);
   
   // Network status
@@ -156,10 +161,12 @@ const App: React.FC = () => {
         setIsLoadingData(true);
         if (activeUser) {
             // Load from Supabase using app user id
-            const { logs: remoteLogs, settings: remoteSettings } = await fetchRemoteData(activeUser.id);
+            const { logs: remoteLogs, settings: remoteSettings, systemHolidays: fetchedHolidays } = await fetchRemoteData(activeUser.id);
             setLogs(remoteLogs);
             if (remoteSettings) setSettings(remoteSettings);
-            else setSettings(DEFAULT_SETTINGS); // Fallback to default if no settings found
+            else setSettings(DEFAULT_SETTINGS); 
+            
+            if (fetchedHolidays) setSystemHolidays(fetchedHolidays);
             
             // Determinar status baseado no último log
             const lastLog = remoteLogs.length > 0 ? remoteLogs[remoteLogs.length - 1] : null;
@@ -431,9 +438,33 @@ const App: React.FC = () => {
     if (updatedLog) saveLogToRemote(updatedLog);
   };
 
-  const handleAddManualLog = (log: TimeLog) => {
-    setLogs(prev => [...prev, log].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()));
+  // Create or Update Log
+  const handleSaveManualLog = (log: TimeLog) => {
+    // Check if updating an existing log
+    const exists = logs.some(l => l.id === log.id);
+
+    if (exists) {
+        // Update
+        setLogs(prev => prev.map(l => l.id === log.id ? log : l));
+    } else {
+        // Create (and sort)
+        setLogs(prev => [...prev, log].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()));
+    }
+    
     saveLogToRemote(log);
+    
+    // Cleanup state
+    setEditingLog(null);
+  };
+
+  const handleEditLog = (log: TimeLog) => {
+    setEditingLog(log);
+    setIsManualLogModalOpen(true);
+  };
+
+  const handleCloseManualModal = () => {
+    setIsManualLogModalOpen(false);
+    setEditingLog(null);
   };
 
   const handleSaveAbsence = (absenceData: Omit<Absence, 'id'>) => {
@@ -464,7 +495,12 @@ const App: React.FC = () => {
     if (todayLogs.length === 0) return;
 
     setIsAnalyzing(true);
-    const result = await analyzeTimesheet(todayLogs, settings);
+    // Combine settings holidays with system holidays for AI analysis
+    const combinedSettings = {
+        ...settings,
+        holidays: [...(settings.holidays || []), ...systemHolidays]
+    };
+    const result = await analyzeTimesheet(todayLogs, combinedSettings);
     setAiAnalysis(result);
     setIsAnalyzing(false);
   };
@@ -601,7 +637,9 @@ const App: React.FC = () => {
       const rate = settings.hourlyRate;
       
       // 1. Verificar se é Feriado (Comparação exata da string de data)
-      const isHoliday = (settings.holidays || []).includes(dateStr);
+      // Merge system holidays with user holidays
+      const allHolidays = [...(settings.holidays || []), ...systemHolidays];
+      const isHoliday = allHolidays.includes(dateStr);
       
       // 2. Verificar se é Dia Especial (Fim de semana/Configurado)
       const logDayOfWeek = new Date(dateStr + 'T12:00:00').getDay();
@@ -642,7 +680,7 @@ const App: React.FC = () => {
 
   const currencySymbol = settings.currency === 'BRL' ? 'R$' : settings.currency === 'USD' ? '$' : '€';
   
-  const isTodayHoliday = (settings.holidays || []).includes(todayStr);
+  const isTodayHoliday = [...(settings.holidays || []), ...systemHolidays].includes(todayStr);
 
   return (
     <div className={`min-h-screen transition-colors duration-500 font-sans selection:bg-indigo-500/20 ${theme === 'dark' ? 'dark' : ''}`}>
@@ -866,8 +904,10 @@ const App: React.FC = () => {
                 {/* Timeline */}
                 <div className="lg:col-span-2">
                     <LogHistory 
-                        logs={logs} 
-                        onDelete={handleDeleteLog} 
+                        logs={logs}
+                        user={activeUser}
+                        onDelete={handleDeleteLog}
+                        onEdit={handleEditLog}
                         onAddManual={() => setIsManualLogModalOpen(true)}
                         currentLogId={currentLogId}
                     />
@@ -930,6 +970,7 @@ const App: React.FC = () => {
         onSave={handleSaveSettings}
         currentUser={activeUser}
         onSelectUser={handleSelectUser}
+        systemHolidays={systemHolidays}
       />
 
       <AbsenceModal
@@ -940,8 +981,9 @@ const App: React.FC = () => {
       
       <ManualLogModal
         isOpen={isManualLogModalOpen}
-        onClose={() => setIsManualLogModalOpen(false)}
-        onSave={handleAddManualLog}
+        onClose={handleCloseManualModal}
+        onSave={handleSaveManualLog}
+        initialLog={editingLog}
       />
 
     </div>
