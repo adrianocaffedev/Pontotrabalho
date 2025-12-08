@@ -1,0 +1,5 @@
+{
+  "name": "PontoInteligente AI",
+  "description": "Sistema de controle de ponto inteligente com análise de produtividade via Gemini AI. Registre entrada, almoço e saída e receba insights sobre sua jornada.",
+  "requestFramePermissions": []
+}
