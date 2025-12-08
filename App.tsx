@@ -487,31 +487,37 @@ const App: React.FC = () => {
     if (updatedLog) saveLogToRemote(updatedLog);
   };
 
-  const handleGenerateAIReport = async () => {
-    // Filter logs for today
-    const today = new Date().toISOString().split('T')[0];
-    const todayLogs = logs.filter(l => l.date === today);
-    
-    if (todayLogs.length === 0) return;
-
-    setIsAnalyzing(true);
-    // Combine settings holidays with system holidays for AI analysis
-    const combinedSettings = {
-        ...settings,
-        holidays: [...(settings.holidays || []), ...systemHolidays]
-    };
-    const result = await analyzeTimesheet(todayLogs, combinedSettings);
-    setAiAnalysis(result);
-    setIsAnalyzing(false);
-  };
-
-  // --- Calculations for Stat Cards ---
   // Using Local Date for "Today" comparison to match UI Clock
   const getLocalDateString = (d: Date) => {
      const offset = d.getTimezoneOffset();
      const local = new Date(d.getTime() - (offset * 60 * 1000));
      return local.toISOString().split('T')[0];
   };
+
+  const handleGenerateAIReport = async () => {
+    // Filter logs for today using consistent local date logic
+    const today = getLocalDateString(new Date());
+    const todayLogs = logs.filter(l => l.date === today);
+    
+    if (todayLogs.length === 0) return;
+
+    setIsAnalyzing(true);
+    
+    try {
+        // Combine settings holidays with system holidays for AI analysis
+        const combinedSettings = {
+            ...settings,
+            holidays: [...(settings.holidays || []), ...systemHolidays]
+        };
+        const result = await analyzeTimesheet(todayLogs, combinedSettings);
+        setAiAnalysis(result);
+    } catch (e) {
+        console.error("Erro crítico na geração de relatório AI:", e);
+    } finally {
+        setIsAnalyzing(false);
+    }
+  };
+
 
   const todayStr = getLocalDateString(now);
   const todayLogs = logs.filter(l => l.date === todayStr);
