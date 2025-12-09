@@ -8,9 +8,10 @@ interface ManualLogModalProps {
   onClose: () => void;
   onSave: (log: TimeLog) => void;
   initialLog: TimeLog | null; // Adicionado para edição
+  existingDates: string[]; // Para validação de duplicidade
 }
 
-const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave, initialLog }) => {
+const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave, initialLog, existingDates }) => {
   // Correção de Data: Pega a data local considerando o offset do timezone, em vez de UTC
   const getLocalDate = () => {
     const d = new Date();
@@ -125,6 +126,16 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
       return;
     }
     
+    // Check for duplicate date
+    const isDateTaken = existingDates.includes(date);
+    const isEditingSameDate = initialLog && initialLog.date === date;
+    
+    // Se a data já existe e NÃO estamos editando o registro que já ocupa essa data
+    if (isDateTaken && !isEditingSameDate) {
+         setError("Já existe um registro para esta data. Por favor, edite o registro existente.");
+         return;
+    }
+
     const startDateTime = new Date(`${date}T${startTime}`);
     const endDateTime = new Date(`${date}T${endTime}`);
 

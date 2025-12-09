@@ -1,21 +1,26 @@
 
 import React, { useState } from 'react';
-import { TimeLog, AppUser } from '../types';
-import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock, Edit3, Calendar, FileText } from 'lucide-react';
+import { TimeLog, AppUser, AppSettings } from '../types';
+import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock, Edit3, Calendar, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 interface LogHistoryProps {
   logs: TimeLog[];
   user?: AppUser | null;
+  settings: AppSettings;
+  systemHolidays: string[];
   onDelete: (id: string) => void;
   onEdit: (log: TimeLog) => void;
   onAddManual: () => void;
   currentLogId: string | null;
 }
 
-const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, onAddManual, currentLogId }) => {
+const ITEMS_PER_PAGE = 3;
+
+const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHolidays, onDelete, onEdit, onAddManual, currentLogId }) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   
   const handleDownloadBackup = () => {
     if (logs.length === 0) return;
@@ -32,10 +37,123 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, o
     downloadAnchorNode.remove();
   };
 
+  // Helper para calcular horas noturnas (Duplicado do App.tsx para isolamento)
+  const calculateNightShiftMs = (log: TimeLog) => {
+    if (!log.startTime) return 0;
+    const start = new Date(log.startTime);
+    const end = log.endTime ? new Date(log.endTime) : new Date();
+
+    const getOverlap = (start1: number, end1: number, start2: number, end2: number) => {
+        const maxStart = Math.max(start1, start2);
+        const minEnd = Math.min(end1, end2);
+        return Math.max(0, minEnd - maxStart);
+    };
+
+    let nightMs = 0;
+    const sTime = start.getTime();
+    const eTime = end.getTime();
+
+    const windows = [];
+    const currentScanner = new Date(start);
+    currentScanner.setDate(currentScanner.getDate() - 1);
+    const endScanner = new Date(end);
+    endScanner.setDate(endScanner.getDate() + 1);
+
+    while (currentScanner <= endScanner) {
+        const wStart = new Date(currentScanner);
+        wStart.setHours(22, 0, 0, 0);
+        
+        const wEnd = new Date(currentScanner);
+        wEnd.setDate(wEnd.getDate() + 1);
+        wEnd.setHours(7, 0, 0, 0);
+        
+        windows.push({ start: wStart.getTime(), end: wEnd.getTime() });
+        currentScanner.setDate(currentScanner.getDate() + 1);
+    }
+
+    windows.forEach(win => {
+        const intersection = getOverlap(sTime, eTime, win.start, win.end);
+        
+        if (intersection > 0) {
+            let effectiveNightWork = intersection;
+            const overlapStart = Math.max(sTime, win.start);
+            const overlapEnd = Math.min(eTime, win.end);
+
+            log.breaks.forEach(brk => {
+                if (brk.type === 'LUNCH') {
+                     const bStart = new Date(brk.startTime).getTime();
+                     const bEnd = brk.endTime ? new Date(brk.endTime).getTime() : new Date().getTime();
+                     const breakInNight = getOverlap(bStart, bEnd, overlapStart, overlapEnd);
+                     effectiveNightWork -= breakInNight;
+                }
+            });
+
+            nightMs += Math.max(0, effectiveNightWork);
+        }
+    });
+
+    return nightMs;
+  };
+
+  const calculateDailyValue = (log: TimeLog) => {
+      if (!settings.hourlyRate) return 0;
+
+      const ms = log.totalDurationMs;
+      const nightMs = calculateNightShiftMs(log);
+      
+      const totalHours = ms / (1000 * 60 * 60);
+      const nightHoursDecimal = nightMs / (1000 * 60 * 60);
+      const rate = settings.hourlyRate;
+      
+      const allHolidays = [...(settings.holidays || []), ...systemHolidays];
+      const isHoliday = allHolidays.includes(log.date);
+      
+      const logDayOfWeek = new Date(log.date + 'T12:00:00').getDay();
+      const isOvertimeDay = (settings.overtimeDays || []).includes(logDayOfWeek);
+      
+      let totalEarnings = 0;
+
+      // REGRAS:
+      // Fim de Semana/Feriado: 100% (Dobro)
+      // Dia Útil: 1ª Hora Extra +25%, Restante +37.5%
+      // Adicional Noturno: +25% ACUMULATIVO sobre todas as horas noturnas
+
+      if (isHoliday || isOvertimeDay) {
+          totalEarnings = totalHours * rate * 2;
+      } else {
+          const dailyLimit = settings.dailyWorkHours || 8;
+          if (totalHours <= dailyLimit) {
+              totalEarnings = totalHours * rate;
+          } else {
+              const normalEarnings = dailyLimit * rate;
+              const extraHoursTotal = totalHours - dailyLimit;
+              
+              const firstExtraHour = Math.min(extraHoursTotal, 1);
+              const remainingExtraHours = Math.max(0, extraHoursTotal - 1);
+              
+              const earningsFirstExtra = firstExtraHour * rate * 1.25;
+              const earningsRemainingExtra = remainingExtraHours * rate * 1.375;
+              
+              totalEarnings = normalEarnings + earningsFirstExtra + earningsRemainingExtra;
+          }
+      }
+
+      // Adicional Noturno (Acumulativo)
+      // +25% da hora base para qualquer hora trabalhada entre 22h e 07h
+      const nightBonus = nightHoursDecimal * rate * 0.25;
+      
+      const finalValue = totalEarnings + nightBonus;
+
+      // Vale Refeição NÃO é somado aqui.
+
+      return finalValue;
+  };
+
   const handleExportPDF = () => {
     if (logs.length === 0) return;
 
     const doc = new jsPDF();
+    const currency = settings.currency === 'BRL' ? 'R$' : settings.currency === 'USD' ? '$' : '€';
     
     // Header
     doc.setFontSize(18);
@@ -54,6 +172,8 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, o
     // Data Processing for Table
     const sortedLogs = [...logs].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
     
+    const allHolidays = [...(settings.holidays || []), ...systemHolidays];
+
     const tableRows = sortedLogs.map(log => {
         const dateObj = new Date(log.startTime);
         const dayDate = dateObj.toLocaleDateString('pt-BR');
@@ -75,8 +195,33 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, o
             return `${type}: ${bStart}-${bEnd}`;
         }).join('\n');
         
-        // Notes / Absences
-        const notes = log.absences.map(a => `[${a.type === 'FULL_DAY' ? 'FALTA' : 'PARCIAL'}] ${a.reason}`).join('\n');
+        // Contexto Financeiro para Explicação
+        const isHoliday = allHolidays.includes(log.date);
+        const logDayOfWeek = new Date(log.date + 'T12:00:00').getDay();
+        const isOvertimeDay = (settings.overtimeDays || []).includes(logDayOfWeek);
+        const nightMs = calculateNightShiftMs(log);
+        const hasNightShift = nightMs > 0;
+        const hasWork = log.totalDurationMs > 0;
+
+        // Value Calculation
+        const dailyValue = calculateDailyValue(log);
+        const valueFormatted = `${currency} ${dailyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        
+        // Notes / Absences / Financial Explanation
+        const absenceNotes = log.absences.map(a => `[${a.type === 'FULL_DAY' ? 'FALTA' : 'PARCIAL'}] ${a.reason}`);
+        
+        const financialNotes = [];
+        if (isHoliday) financialNotes.push("Feriado (100%)");
+        else if (isOvertimeDay) financialNotes.push("Dia Extra (100%)");
+        
+        if (hasNightShift) financialNotes.push("Adic. Noturno");
+        
+        if (settings.foodAllowance > 0 && hasWork) {
+            // Apenas informamos o VR, não somamos no valor da hora
+            financialNotes.push(`VR: ${currency} ${settings.foodAllowance}`);
+        }
+
+        const allNotes = [...financialNotes, ...absenceNotes].join(', ');
 
         return [
             `${dayDate}\n${weekDay}`,
@@ -84,20 +229,22 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, o
             endTime,
             breaks,
             duration,
-            notes
+            valueFormatted,
+            allNotes
         ];
     });
 
     autoTable(doc, {
-        head: [['Data', 'Entrada', 'Saída', 'Pausas', 'Total', 'Obs']],
+        head: [['Data', 'Entrada', 'Saída', 'Pausas', 'Total', 'Valor (Est.)', 'Obs']],
         body: tableRows,
         startY: 40,
-        styles: { fontSize: 9, cellPadding: 3, valign: 'middle' },
+        styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
         headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
         columnStyles: {
-            0: { cellWidth: 25 },
-            3: { cellWidth: 40 },
-            5: { cellWidth: 'auto' }
+            0: { cellWidth: 22 },
+            3: { cellWidth: 35 },
+            5: { cellWidth: 25, halign: 'right', fontStyle: 'bold' },
+            6: { cellWidth: 'auto' }
         },
         alternateRowStyles: { fillColor: [245, 247, 255] }
     });
@@ -121,6 +268,19 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, o
     const hours = Math.floor(ms / (1000 * 60 * 60));
     const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
+  };
+
+  // Logic for "Show More"
+  const reversedLogs = [...logs].reverse();
+  const visibleLogs = reversedLogs.slice(0, visibleCount);
+  const hasMore = reversedLogs.length > visibleCount;
+
+  const handleShowMore = () => {
+      setVisibleCount(prev => prev + ITEMS_PER_PAGE);
+  };
+
+  const handleShowLess = () => {
+      setVisibleCount(ITEMS_PER_PAGE);
   };
 
   return (
@@ -171,7 +331,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, o
         </div>
       ) : (
         <div className="space-y-4">
-          {logs.slice().reverse().map((log, index) => {
+          {visibleLogs.map((log, index) => {
             const isCurrentLog = log.id === currentLogId;
 
             return (
@@ -284,7 +444,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, o
                                     e.stopPropagation();
                                     setDeleteId(null);
                                 }}
-                                className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95 transition-all"
+                                className="p-2 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-all"
                                 title="Cancelar"
                             >
                                 <X size={16} strokeWidth={3} />
@@ -335,6 +495,30 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, onDelete, onEdit, o
 
             </div>
           )})}
+          
+          {/* Pagination Controls */}
+          {(hasMore || visibleCount > ITEMS_PER_PAGE) && (
+             <div className="flex items-center justify-center gap-2 pt-2 animate-in fade-in">
+                 {hasMore && (
+                     <button
+                        onClick={handleShowMore}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/70 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-wide border border-white/40 dark:border-white/5 transition-all active:scale-95 shadow-sm"
+                     >
+                        <ChevronDown size={14} />
+                        Carregar Mais Antigos
+                     </button>
+                 )}
+                 {visibleCount > ITEMS_PER_PAGE && (
+                     <button
+                        onClick={handleShowLess}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/70 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-wide border border-white/40 dark:border-white/5 transition-all active:scale-95"
+                     >
+                        <ChevronUp size={14} />
+                        Mostrar Menos
+                     </button>
+                 )}
+             </div>
+          )}
         </div>
       )}
     </div>

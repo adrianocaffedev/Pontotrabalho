@@ -328,13 +328,30 @@ const App: React.FC = () => {
     alarmIntervalRef.current = setInterval(checkAlarm, 5000);
     return () => { if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current); };
   }, [status, currentLogId, logs, alarmTriggered, settings]);
+  
+  // --- Calculations for Stat Cards & Helpers ---
+  // Using Local Date for "Today" comparison to match UI Clock and User Day
+  const getLocalDateString = (d: Date) => {
+     const offset = d.getTimezoneOffset();
+     const local = new Date(d.getTime() - (offset * 60 * 1000));
+     return local.toISOString().split('T')[0];
+  };
 
   const handleStartWork = () => {
+    // Verificar duplicidade: se já existe um log para hoje
+    const todayStr = getLocalDateString(new Date());
+    const hasLogToday = logs.some(l => l.date === todayStr);
+
+    if (hasLogToday) {
+        alert("Já existe um registro de ponto para hoje. Para adicionar mais horas, edite o registro existente ou exclua-o.");
+        return;
+    }
+
     if (Notification.permission !== 'granted') Notification.requestPermission();
     
     const newLog: TimeLog = {
       id: generateId(),
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       startTime: new Date().toISOString(),
       breaks: [],
       absences: [],
@@ -487,37 +504,23 @@ const App: React.FC = () => {
     if (updatedLog) saveLogToRemote(updatedLog);
   };
 
-  // Using Local Date for "Today" comparison to match UI Clock
-  const getLocalDateString = (d: Date) => {
-     const offset = d.getTimezoneOffset();
-     const local = new Date(d.getTime() - (offset * 60 * 1000));
-     return local.toISOString().split('T')[0];
-  };
-
   const handleGenerateAIReport = async () => {
-    // Filter logs for today using consistent local date logic
-    const today = getLocalDateString(new Date());
+    // Filter logs for today
+    const today = new Date().toISOString().split('T')[0];
     const todayLogs = logs.filter(l => l.date === today);
     
     if (todayLogs.length === 0) return;
 
     setIsAnalyzing(true);
-    
-    try {
-        // Combine settings holidays with system holidays for AI analysis
-        const combinedSettings = {
-            ...settings,
-            holidays: [...(settings.holidays || []), ...systemHolidays]
-        };
-        const result = await analyzeTimesheet(todayLogs, combinedSettings);
-        setAiAnalysis(result);
-    } catch (e) {
-        console.error("Erro crítico na geração de relatório AI:", e);
-    } finally {
-        setIsAnalyzing(false);
-    }
+    // Combine settings holidays with system holidays for AI analysis
+    const combinedSettings = {
+        ...settings,
+        holidays: [...(settings.holidays || []), ...systemHolidays]
+    };
+    const result = await analyzeTimesheet(todayLogs, combinedSettings);
+    setAiAnalysis(result);
+    setIsAnalyzing(false);
   };
-
 
   const todayStr = getLocalDateString(now);
   const todayLogs = logs.filter(l => l.date === todayStr);
@@ -643,7 +646,6 @@ const App: React.FC = () => {
       const rate = settings.hourlyRate;
       
       // 1. Verificar se é Feriado (Comparação exata da string de data)
-      // Merge system holidays with user holidays
       const allHolidays = [...(settings.holidays || []), ...systemHolidays];
       const isHoliday = allHolidays.includes(dateStr);
       
@@ -653,30 +655,43 @@ const App: React.FC = () => {
       
       let totalEarnings = 0;
 
-      // Regra de Feriado ou Dia Especial (Dom/Sáb): 100% de bônus (Dobro do valor) em TUDO
+      // --- REGRA DE OURO (Portugal) ---
+      // 1. Horas Normais vs Extras
+      // 2. Adicional Noturno é pago À PARTE sobre todas as horas noturnas (+25%) e acumula.
+
       if (isHoliday || isOvertimeDay) {
+          // Fim de Semana / Feriado: 100% sobre TUDO
           // Valor dobra
           totalEarnings = totalHours * rate * 2;
       } else {
-          // Dia Normal
+          // Dia Útil Normal
           const dailyLimit = settings.dailyWorkHours || 8;
           
           if (totalHours <= dailyLimit) {
               // Dentro do limite
               totalEarnings = totalHours * rate;
           } else {
-              // Com Hora Extra Normal (ex: 25%)
-              const normalEarnings = dailyLimit * rate;
-              const extraHours = totalHours - dailyLimit;
-              const overtimeMultiplier = 1 + ((settings.overtimePercentage || 0) / 100);
+              // Hora Suplementar (Escalonada)
+              // 1ª Hora Extra: +25%
+              // Horas Seguintes: +37.5%
               
-              totalEarnings = normalEarnings + (extraHours * rate * overtimeMultiplier);
+              const normalEarnings = dailyLimit * rate;
+              const extraHoursTotal = totalHours - dailyLimit;
+              
+              const firstExtraHour = Math.min(extraHoursTotal, 1);
+              const remainingExtraHours = Math.max(0, extraHoursTotal - 1);
+              
+              // Cálculo
+              const earningsFirstExtra = firstExtraHour * rate * 1.25; // 1ª Hora (+25%)
+              const earningsRemainingExtra = remainingExtraHours * rate * 1.375; // Resto (+37.5%)
+              
+              totalEarnings = normalEarnings + earningsFirstExtra + earningsRemainingExtra;
           }
       }
 
-      // Adicional Noturno (25% sobre as horas noturnas) - Acumula com extras
-      // Em Portugal, horas noturnas (22-07) tem acréscimo de 25% sobre o valor da hora normal (ou da hora extra se coincidir)
-      // Aqui simplificaremos aplicando 25% da base sobre as horas noturnas, somando ao total
+      // Adicional Noturno (Acumulativo)
+      // Das 22h às 07h, ganha-se +25% sobre a hora base, INDEPENDENTE de ser hora extra ou não.
+      // Se for hora extra, já calculamos o valor da extra acima. Agora somamos o "plus" noturno.
       const nightBonus = nightHoursDecimal * rate * 0.25;
       
       return totalEarnings + nightBonus;
@@ -912,6 +927,8 @@ const App: React.FC = () => {
                     <LogHistory 
                         logs={logs}
                         user={activeUser}
+                        settings={settings}
+                        systemHolidays={systemHolidays}
                         onDelete={handleDeleteLog}
                         onEdit={handleEditLog}
                         onAddManual={() => setIsManualLogModalOpen(true)}
@@ -990,6 +1007,7 @@ const App: React.FC = () => {
         onClose={handleCloseManualModal}
         onSave={handleSaveManualLog}
         initialLog={editingLog}
+        existingDates={logs.map(l => l.date)}
       />
 
     </div>
