@@ -12,10 +12,6 @@ import { analyzeTimesheet } from './services/geminiService';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers } from './services/dataService';
 import { Play, Coffee, StopCircle, Utensils, BellRing, Settings as SettingsIcon, PlayCircle, TrendingUp, DollarSign, Timer, CalendarClock, CalendarOff, ArrowRight, Moon, Sun, Edit3, Cloud, Database, Users, Clock as ClockIcon } from 'lucide-react';
 
-const STORAGE_KEY_LOGS = 'ponto_ai_logs';
-const STORAGE_KEY_STATUS = 'ponto_ai_status';
-const STORAGE_KEY_CURRENT_LOG = 'ponto_ai_current_log_id';
-const STORAGE_KEY_SETTINGS = 'ponto_ai_settings';
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
 

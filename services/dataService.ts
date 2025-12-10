@@ -20,14 +20,14 @@ import { TimeLog, AppSettings, AppUser } from '../types';
 const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
   if (!dbSettings) return null;
   return {
-    dailyWorkHours: Number(dbSettings.daily_work_hours),
-    lunchDurationMinutes: dbSettings.lunch_duration_minutes,
-    notificationMinutes: dbSettings.notification_minutes,
-    hourlyRate: Number(dbSettings.hourly_rate),
-    foodAllowance: Number(dbSettings.food_allowance),
-    currency: dbSettings.currency,
-    overtimePercentage: Number(dbSettings.overtime_percentage),
-    overtimeDays: dbSettings.overtime_days || [],
+    dailyWorkHours: Number(dbSettings.daily_work_hours) || 8,
+    lunchDurationMinutes: Number(dbSettings.lunch_duration_minutes) || 60,
+    notificationMinutes: Number(dbSettings.notification_minutes) || 10,
+    hourlyRate: Number(dbSettings.hourly_rate) || 0,
+    foodAllowance: Number(dbSettings.food_allowance) || 0,
+    currency: dbSettings.currency || 'EUR',
+    overtimePercentage: dbSettings.overtime_percentage !== null ? Number(dbSettings.overtime_percentage) : 25,
+    overtimeDays: dbSettings.overtime_days || [0, 6],
     holidays: dbSettings.holidays || [], 
   };
 };
@@ -124,7 +124,7 @@ export const createAppUser = async (name: string): Promise<{ user: AppUser | nul
         currency: 'EUR',
         overtime_percentage: 25,
         overtime_days: [0, 6],
-        holidays: [] // Agora incluído para persistência completa
+        holidays: []
       };
 
       const { error: settingsError } = await supabase
@@ -205,73 +205,48 @@ export const fetchRemoteData = async (userId: string) => {
 
   try {
     // 1. Fetch Settings
+    // Importante: .limit(1) para pegar um único registro.
     const { data: settingsData, error: settingsError } = await supabase
-      .from('user_settings')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .limit(1);
 
-    if (settingsError && settingsError.code !== 'PGRST116') {
-      console.error('Error fetching settings:', JSON.stringify(settingsError, null, 2));
+    let settings: AppSettings | null = null;
+    if (settingsData && settingsData.length > 0) {
+        settings = mapSettingsFromDb(settingsData[0]);
+    } else if (settingsError) {
+        console.warn("Error fetching settings:", settingsError);
     }
 
     // 2. Fetch Logs
     const { data: logsData, error: logsError } = await supabase
-      .from('time_logs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: true });
+        .from('time_logs')
+        .select(`*, breaks (*), absences (*)`)
+        .eq('user_id', userId)
+        .order('start_time', { ascending: true });
 
-    if (logsError) throw logsError;
-
-    // 3. Fetch Breaks (para todos os logs do usuário)
-    const logIds = logsData?.map(l => l.id) || [];
-    let allBreaks: any[] = [];
-    let allAbsences: any[] = [];
-
-    if (logIds.length > 0) {
-      const { data: breaksData } = await supabase
-        .from('breaks')
-        .select('*')
-        .in('time_log_id', logIds);
-      allBreaks = breaksData || [];
-
-      const { data: absencesData } = await supabase
-        .from('absences')
-        .select('*')
-        .in('time_log_id', logIds);
-      allAbsences = absencesData || [];
+    if (logsError) {
+        console.error("Error fetching logs:", logsError);
     }
 
-    // 4. Montar Objetos
-    const mappedLogs = logsData?.map(log => 
-      mapLogFromDb(
-        log, 
-        allBreaks.filter(b => b.time_log_id === log.id),
-        allAbsences.filter(a => a.time_log_id === log.id)
-      )
-    ) || [];
+    const logs = logsData ? logsData.map((l: any) => mapLogFromDb(l, l.breaks || [], l.absences || [])) : [];
 
-    // 5. Fetch System Holidays
+    // 3. Fetch System Holidays
     const systemHolidays = await getSystemHolidays();
 
-    return {
-      settings: mapSettingsFromDb(settingsData),
-      logs: mappedLogs,
-      systemHolidays // Return separate list
-    };
-
+    return { settings, logs, systemHolidays };
   } catch (error) {
-    console.error('Fetch remote data error:', JSON.stringify(error, null, 2));
-    return { settings: null, logs: [], systemHolidays: [] };
+      console.error("Critical error fetching remote data:", error);
+      return { settings: null, logs: [], systemHolidays: [] };
   }
 };
 
 export const saveRemoteSettings = async (settings: AppSettings, userId: string): Promise<{ success: boolean; error?: string }> => {
-  if (!userId) return { success: false, error: 'Usuário não identificado' };
+  if (!userId) return { success: false, error: 'User ID missing' };
 
-  const dbPayload = {
-    user_id: userId,
+  // SAFETY: Ensure arrays are initialized to avoid DB errors or nulls
+  const payload = {
     daily_work_hours: settings.dailyWorkHours,
     lunch_duration_minutes: settings.lunchDurationMinutes,
     notification_minutes: settings.notificationMinutes,
@@ -279,91 +254,131 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
     food_allowance: settings.foodAllowance,
     currency: settings.currency,
     overtime_percentage: settings.overtimePercentage,
-    overtime_days: settings.overtimeDays || [],
-    holidays: settings.holidays || [], 
-    updated_at: new Date().toISOString()
+    overtime_days: settings.overtimeDays || [], // Proteção contra undefined
+    holidays: settings.holidays || [], // Proteção contra undefined
+    user_id: userId
   };
 
-  const { error } = await supabase
-    .from('user_settings')
-    .upsert(dbPayload, { onConflict: 'user_id' });
+  try {
+    // ESTRATÉGIA NUCLEAR (DELETE THEN INSERT):
+    // 1. Apagar TODAS as configurações existentes para este usuário.
+    // Isso remove duplicatas, lixo e conflitos antigos de uma vez por todas.
+    
+    const { error: deleteError } = await supabase
+        .from('user_settings')
+        .delete()
+        .eq('user_id', userId);
+        
+    if (deleteError) {
+        console.warn('Warning deleting old settings:', deleteError);
+        // Não lançamos erro aqui, pois se não tinha nada para deletar, tudo bem.
+        // Se falhou por outro motivo, o Insert abaixo vai acusar ou duplicar, mas o objetivo é limpar.
+    }
+    
+    // 2. Inserir o novo registro limpo.
+    const { error: insertError } = await supabase
+        .from('user_settings')
+        .insert(payload);
+        
+    if (insertError) throw insertError;
 
-  if (error) {
-    const errorMsg = JSON.stringify(error, null, 2);
-    console.error('Error saving settings:', errorMsg);
-    return { success: false, error: errorMsg };
-  }
-  
-  return { success: true };
-};
+    return { success: true };
 
-export const upsertRemoteLog = async (log: TimeLog, userId: string) => {
-  if (!userId) return;
-
-  // 1. Upsert Log
-  const { data: insertedLog, error: logError } = await supabase
-    .from('time_logs')
-    .upsert({
-      id: log.id,
-      user_id: userId,
-      date: log.date,
-      start_time: log.startTime,
-      end_time: log.endTime,
-      total_duration_ms: log.totalDurationMs
-    })
-    .select()
-    .single();
-
-  if (logError) {
-    console.error('Error upserting log:', JSON.stringify(logError, null, 2));
-    return;
-  }
-
-  const logId = insertedLog.id;
-
-  // 2. Handle Breaks
-  await supabase.from('breaks').delete().eq('time_log_id', logId);
-  
-  if (log.breaks.length > 0) {
-    const breaksPayload = log.breaks.map(b => ({
-      id: b.id,
-      time_log_id: logId,
-      start_time: b.startTime,
-      end_time: b.endTime,
-      type: b.type
-    }));
-    const { error: breaksError } = await supabase.from('breaks').insert(breaksPayload);
-    if (breaksError) console.error('Error saving breaks', breaksError);
-  }
-
-  // 3. Handle Absences
-  await supabase.from('absences').delete().eq('time_log_id', logId);
-
-  if (log.absences && log.absences.length > 0) {
-    const absencesPayload = log.absences.map(a => ({
-      id: a.id,
-      time_log_id: logId,
-      type: a.type,
-      reason: a.reason,
-      start_time: a.startTime,
-      end_time: a.endTime
-    }));
-    const { error: absencesError } = await supabase.from('absences').insert(absencesPayload);
-    if (absencesError) console.error('Error saving absences', absencesError);
+  } catch (err: any) {
+    console.error('Error saving settings:', err);
+    let errorMessage = "Erro desconhecido";
+    
+    // Extração robusta da mensagem de erro
+    if (typeof err === 'string') {
+        errorMessage = err;
+    } else if (err?.message) {
+        errorMessage = err.message;
+        // Dica amigável se for problema de coluna faltando no Supabase
+        if (errorMessage.includes('column') || errorMessage.includes('relation')) {
+            errorMessage += " (DICA TÉCNICA: Verifique se as colunas 'holidays' e 'overtime_days' existem na tabela 'user_settings' do Supabase).";
+        }
+    } else {
+        errorMessage = JSON.stringify(err);
+    }
+    
+    return { success: false, error: errorMessage };
   }
 };
 
-export const deleteRemoteLog = async (logId: string): Promise<{ success: boolean, error?: string }> => {
+export const upsertRemoteLog = async (log: TimeLog, userId: string): Promise<{ success: boolean; error?: string }> => {
     try {
-        // Cascade delete manually just in case DB doesn't have it
+        const logPayload = {
+            id: log.id,
+            user_id: userId,
+            date: log.date,
+            start_time: log.startTime,
+            end_time: log.endTime,
+            total_duration_ms: log.totalDurationMs
+        };
+
+        const { error: logError } = await supabase
+            .from('time_logs')
+            .upsert(logPayload);
+        
+        if (logError) throw logError;
+
+        // Clean sync strategy for children:
+        // 1. Upsert the TimeLog.
+        // 2. Delete existing breaks/absences for this log (to handle removals).
+        // 3. Insert current breaks/absences.
+        
+        // Step 2: Delete children
+        await supabase.from('breaks').delete().eq('time_log_id', log.id);
+        await supabase.from('absences').delete().eq('time_log_id', log.id);
+
+        // Step 3: Insert children
+        if (log.breaks.length > 0) {
+            const breaksPayload = log.breaks.map(b => ({
+                id: b.id,
+                time_log_id: log.id,
+                start_time: b.startTime,
+                end_time: b.endTime,
+                type: b.type
+            }));
+            const { error: breakError } = await supabase.from('breaks').insert(breaksPayload);
+            if (breakError) console.error('Error saving breaks', breakError);
+        }
+
+        if (log.absences && log.absences.length > 0) {
+            const absencesPayload = log.absences.map(a => ({
+                id: a.id,
+                time_log_id: log.id,
+                type: a.type,
+                reason: a.reason,
+                start_time: a.startTime,
+                end_time: a.endTime
+            }));
+            const { error: absError } = await supabase.from('absences').insert(absencesPayload);
+            if (absError) console.error('Error saving absences', absError);
+        }
+
+        return { success: true };
+
+    } catch (err: any) {
+        console.error('Error upserting log:', err);
+        return { success: false, error: err.message };
+    }
+};
+
+export const deleteRemoteLog = async (logId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+        // Cascade delete usually handled by DB, but doing manual just in case
         await supabase.from('breaks').delete().eq('time_log_id', logId);
         await supabase.from('absences').delete().eq('time_log_id', logId);
         
-        const { error } = await supabase.from('time_logs').delete().eq('id', logId);
+        const { error } = await supabase
+            .from('time_logs')
+            .delete()
+            .eq('id', logId);
+
         if (error) throw error;
-        
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message || 'Erro desconhecido' };
+    } catch (err: any) {
+        return { success: false, error: err.message };
     }
 };
