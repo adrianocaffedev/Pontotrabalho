@@ -1,16 +1,14 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { WorkStatus, TimeLog, AnalysisResult, Break, AppSettings, Absence, AppUser } from './types';
+import { WorkStatus, TimeLog, Break, AppSettings, Absence, AppUser } from './types';
 import Clock from './components/Clock';
 import StatusBadge from './components/StatusBadge';
 import LogHistory from './components/LogHistory';
-import AIReport from './components/AIReport';
 import SettingsModal from './components/SettingsModal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
-import { analyzeTimesheet } from './services/geminiService';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, BellRing, Settings as SettingsIcon, PlayCircle, TrendingUp, DollarSign, Timer, CalendarClock, CalendarOff, ArrowRight, Moon, Sun, Edit3, Cloud, Database, Users, Clock as ClockIcon } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
@@ -78,8 +76,6 @@ const App: React.FC = () => {
   const [status, setStatus] = useState<WorkStatus>(WorkStatus.IDLE);
   const [logs, setLogs] = useState<TimeLog[]>([]);
   const [currentLogId, setCurrentLogId] = useState<string | null>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<AnalysisResult | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [alarmTriggered, setAlarmTriggered] = useState(false);
   const [now, setNow] = useState(new Date());
   
@@ -386,7 +382,6 @@ const App: React.FC = () => {
     setLogs(prev => [...prev, newLog]);
     setCurrentLogId(newLog.id);
     setStatus(WorkStatus.WORKING);
-    setAiAnalysis(null);
     saveLogToRemote(newLog);
   };
 
@@ -527,24 +522,6 @@ const App: React.FC = () => {
     }));
     
     if (updatedLog) saveLogToRemote(updatedLog);
-  };
-
-  const handleGenerateAIReport = async () => {
-    // Filter logs for today
-    const today = new Date().toISOString().split('T')[0];
-    const todayLogs = logs.filter(l => l.date === today);
-    
-    if (todayLogs.length === 0) return;
-
-    setIsAnalyzing(true);
-    // Combine settings holidays with system holidays for AI analysis
-    const combinedSettings = {
-        ...settings,
-        holidays: [...(settings.holidays || []), ...systemHolidays]
-    };
-    const result = await analyzeTimesheet(todayLogs, combinedSettings);
-    setAiAnalysis(result);
-    setIsAnalyzing(false);
   };
 
   const todayStr = getLocalDateString(now);
@@ -971,17 +948,10 @@ const App: React.FC = () => {
                             <h3 className="text-lg font-bold mb-1 opacity-90">Registros Hoje</h3>
                             <div className="text-4xl font-bold tracking-tighter mb-4">{todayLogs.length}</div>
                             <p className="text-xs font-medium opacity-70 leading-relaxed max-w-[200px]">
-                                Mantenha seus registros consistentes para melhor análise da IA.
+                                Mantenha seus registros consistentes.
                             </p>
                         </div>
                     </div>
-                    
-                    <AIReport 
-                        report={aiAnalysis} 
-                        loading={isAnalyzing} 
-                        onGenerate={handleGenerateAIReport}
-                        hasData={todayLogs.length > 0}
-                    />
                 </div>
             </div>
             </main>
