@@ -9,7 +9,7 @@ import SettingsModal from './components/SettingsModal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import { analyzeTimesheet } from './services/geminiService';
-import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers } from './services/dataService';
+import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
 import { Play, Coffee, StopCircle, Utensils, BellRing, Settings as SettingsIcon, PlayCircle, TrendingUp, DollarSign, Timer, CalendarClock, CalendarOff, ArrowRight, Moon, Sun, Edit3, Cloud, Database, Users, Clock as ClockIcon } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
@@ -118,6 +118,35 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('online', handleStatusChange);
       window.removeEventListener('offline', handleStatusChange);
+    };
+  }, []);
+
+  // --- HEARTBEAT SYSTEM: Evitar pausa do Supabase ---
+  useEffect(() => {
+    const triggerHeartbeat = async () => {
+        if (navigator.onLine) {
+            await keepAlive();
+        }
+    };
+
+    // 1. Executa a cada 10 minutos
+    const intervalId = setInterval(triggerHeartbeat, 10 * 60 * 1000);
+
+    // 2. Executa sempre que a aba volta a ficar visível (usuário volta ao app)
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            triggerHeartbeat();
+        }
+    };
+    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    // Executa uma vez ao montar
+    triggerHeartbeat();
+
+    return () => {
+        clearInterval(intervalId);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 

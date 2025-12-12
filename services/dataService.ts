@@ -142,6 +142,23 @@ const mapLogFromDb = (dbLog: any, dbBreaks: any[], dbAbsences: any[]): TimeLog =
   };
 };
 
+// --- Função Keep Alive (Coração do App) ---
+// Evita que o Supabase pause o projeto por inatividade
+export const keepAlive = async (): Promise<boolean> => {
+    try {
+        // Faz uma query muito leve apenas para gerar tráfego
+        const { error } = await supabase.from('app_config').select('id').limit(1);
+        if (error && error.code !== '42P01') { // Ignora erro de tabela inexistente
+             console.error("Keep alive ping failed:", error.message);
+             return false;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+};
+
+
 // --- Verificação de Senha Admin (Database) ---
 
 export const verifyAdminPassword = async (password: string): Promise<{ verified: boolean, error?: string }> => {
