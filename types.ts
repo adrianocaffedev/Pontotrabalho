@@ -51,9 +51,18 @@ export interface AnalysisResult {
   suggestions: string[];
 }
 
+export interface ContractRenewal {
+  id: string;
+  date: string;
+}
+
 export interface AppUser {
   id: string;
   name: string;
   active: boolean;
+  company?: string;
+  contractType?: 'EFFECTIVE' | 'TEMPORARY';
+  contractStartDate?: string;
+  renewals?: ContractRenewal[];
   created_at?: string;
 }

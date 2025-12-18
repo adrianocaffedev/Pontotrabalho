@@ -1,6 +1,4 @@
 
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { TimeLog, AnalysisResult, AppSettings } from "../types";
 
@@ -168,7 +166,8 @@ export const analyzeTimesheet = async (logs: TimeLog[], settings: AppSettings): 
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      // Using gemini-3-pro-preview for advanced HR reasoning task
+      model: 'gemini-3-pro-preview',
       contents: prompt,
       config: {
         thinkingConfig: {
