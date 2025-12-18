@@ -260,6 +260,19 @@ export const createAppUser = async (name: string): Promise<{ user: AppUser | nul
   return { user: userData, error: null };
 };
 
+export const updateAppUser = async (id: string, name: string): Promise<{ success: boolean, error: string | null }> => {
+  const { error } = await supabase
+    .from('app_users')
+    .update({ name })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating user:', error);
+    return { success: false, error: error.message };
+  }
+  return { success: true, error: null };
+};
+
 export const deleteAppUser = async (id: string): Promise<{ success: boolean, error: string | null }> => {
   try {
     // 1. Buscar logs do usuário para limpar dependências

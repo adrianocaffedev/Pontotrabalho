@@ -37,7 +37,12 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
     downloadAnchorNode.remove();
   };
 
-  // Helper para calcular horas noturnas (Duplicado do App.tsx para isolamento)
+  const calculateDurationStr = (ms: number) => {
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
   const calculateNightShiftMs = (log: TimeLog) => {
     if (!log.startTime) return 0;
     const start = new Date(log.startTime);
@@ -62,23 +67,19 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
     while (currentScanner <= endScanner) {
         const wStart = new Date(currentScanner);
         wStart.setHours(22, 0, 0, 0);
-        
         const wEnd = new Date(currentScanner);
         wEnd.setDate(wEnd.getDate() + 1);
         wEnd.setHours(7, 0, 0, 0);
-        
         windows.push({ start: wStart.getTime(), end: wEnd.getTime() });
         currentScanner.setDate(currentScanner.getDate() + 1);
     }
 
     windows.forEach(win => {
         const intersection = getOverlap(sTime, eTime, win.start, win.end);
-        
         if (intersection > 0) {
             let effectiveNightWork = intersection;
             const overlapStart = Math.max(sTime, win.start);
             const overlapEnd = Math.min(eTime, win.end);
-
             log.breaks.forEach(brk => {
                 if (brk.type === 'LUNCH') {
                      const bStart = new Date(brk.startTime).getTime();
@@ -87,36 +88,24 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                      effectiveNightWork -= breakInNight;
                 }
             });
-
             nightMs += Math.max(0, effectiveNightWork);
         }
     });
-
     return nightMs;
   };
 
   const calculateDailyValue = (log: TimeLog) => {
       if (!settings.hourlyRate) return 0;
-
       const ms = log.totalDurationMs;
       const nightMs = calculateNightShiftMs(log);
-      
       const totalHours = ms / (1000 * 60 * 60);
       const nightHoursDecimal = nightMs / (1000 * 60 * 60);
       const rate = settings.hourlyRate;
-      
       const allHolidays = [...(settings.holidays || []), ...systemHolidays];
       const isHoliday = allHolidays.includes(log.date);
-      
       const logDayOfWeek = new Date(log.date + 'T12:00:00').getDay();
       const isOvertimeDay = (settings.overtimeDays || []).includes(logDayOfWeek);
-      
       let totalEarnings = 0;
-
-      // REGRAS:
-      // Fim de Semana/Feriado: 100% (Dobro)
-      // Dia Útil: 1ª Hora Extra +25%, Restante +37.5%
-      // Adicional Noturno: +25% ACUMULATIVO sobre todas as horas noturnas
 
       if (isHoliday || isOvertimeDay) {
           totalEarnings = totalHours * rate * 2;
@@ -127,38 +116,26 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
           } else {
               const normalEarnings = dailyLimit * rate;
               const extraHoursTotal = totalHours - dailyLimit;
-              
               const firstExtraHour = Math.min(extraHoursTotal, 1);
               const remainingExtraHours = Math.max(0, extraHoursTotal - 1);
-              
               const earningsFirstExtra = firstExtraHour * rate * 1.25;
               const earningsRemainingExtra = remainingExtraHours * rate * 1.375;
-              
               totalEarnings = normalEarnings + earningsFirstExtra + earningsRemainingExtra;
           }
       }
-
-      // Adicional Noturno (Acumulativo)
-      // +25% da hora base para qualquer hora trabalhada entre 22h e 07h
       const nightBonus = nightHoursDecimal * rate * 0.25;
-      
-      const finalValue = totalEarnings + nightBonus;
-
-      // Vale Refeição NÃO é somado aqui.
-
-      return finalValue;
+      return totalEarnings + nightBonus;
   };
 
   const handleExportPDF = () => {
     if (logs.length === 0) return;
 
-    const doc = new jsPDF();
+    const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem para caber mais colunas
     const currency = settings.currency === 'BRL' ? 'R$' : settings.currency === 'USD' ? '$' : '€';
     
-    // Header
     doc.setFontSize(18);
     doc.setTextColor(40, 40, 40);
-    doc.text("Relatório de Ponto", 14, 22);
+    doc.text("Relatório de Ponto - Detalhado", 14, 22);
     
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
@@ -169,10 +146,13 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
         doc.text(`Funcionário: ${user.name}`, 14, 33);
     }
 
-    // Data Processing for Table
     const sortedLogs = [...logs].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-    
     const allHolidays = [...(settings.holidays || []), ...systemHolidays];
+
+    let totalWorkedMs = 0;
+    let totalSuplMs = 0;
+    let totalExtraWeekendMs = 0;
+    let totalEstimatedValue = 0;
 
     const tableRows = sortedLogs.map(log => {
         const dateObj = new Date(log.startTime);
@@ -182,12 +162,31 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
         const startTime = new Date(log.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const endTime = log.endTime ? new Date(log.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '---';
         
-        // Duration
-        const hours = Math.floor(log.totalDurationMs / (1000 * 60 * 60));
-        const minutes = Math.floor((log.totalDurationMs % (1000 * 60 * 60)) / (1000 * 60));
-        const duration = `${hours}h ${minutes}m`;
+        const workedMs = log.totalDurationMs;
+        const duration = calculateDurationStr(workedMs);
 
-        // Breaks
+        const isHoliday = allHolidays.includes(log.date);
+        const logDayOfWeek = new Date(log.date + 'T12:00:00').getDay();
+        const isOvertimeDay = (settings.overtimeDays || []).includes(logDayOfWeek);
+        const dailyLimitMs = (settings.dailyWorkHours || 8) * 3600000;
+
+        let daySuplMs = 0;
+        let dayExtraWeekendMs = 0;
+
+        // SEPARAÇÃO: Suplementares (Úteis) vs Extras (Folgas/Feriados)
+        if (isHoliday || isOvertimeDay) {
+            dayExtraWeekendMs = workedMs;
+        } else {
+            daySuplMs = Math.max(0, workedMs - dailyLimitMs);
+        }
+
+        totalWorkedMs += workedMs;
+        totalSuplMs += daySuplMs;
+        totalExtraWeekendMs += dayExtraWeekendMs;
+        
+        const dailyVal = calculateDailyValue(log);
+        totalEstimatedValue += dailyVal;
+
         const breaks = log.breaks.map(b => {
             const bStart = new Date(b.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const bEnd = b.endTime ? new Date(b.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '?';
@@ -195,32 +194,15 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
             return `${type}: ${bStart}-${bEnd}`;
         }).join('\n');
         
-        // Contexto Financeiro para Explicação
-        const isHoliday = allHolidays.includes(log.date);
-        const logDayOfWeek = new Date(log.date + 'T12:00:00').getDay();
-        const isOvertimeDay = (settings.overtimeDays || []).includes(logDayOfWeek);
         const nightMs = calculateNightShiftMs(log);
-        const hasNightShift = nightMs > 0;
-        const hasWork = log.totalDurationMs > 0;
-
-        // Value Calculation
-        const dailyValue = calculateDailyValue(log);
-        const valueFormatted = `${currency} ${dailyValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const valueFormatted = `${currency} ${dailyVal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         
-        // Notes / Absences / Financial Explanation
         const absenceNotes = log.absences.map(a => `[${a.type === 'FULL_DAY' ? 'FALTA' : 'PARCIAL'}] ${a.reason}`);
-        
         const financialNotes = [];
         if (isHoliday) financialNotes.push("Feriado (100%)");
         else if (isOvertimeDay) financialNotes.push("Dia Extra (100%)");
+        if (nightMs > 0) financialNotes.push("Adic. Noturno");
         
-        if (hasNightShift) financialNotes.push("Adic. Noturno");
-        
-        if (settings.foodAllowance > 0 && hasWork) {
-            // Apenas informamos o VR, não somamos no valor da hora
-            financialNotes.push(`VR: ${currency} ${settings.foodAllowance}`);
-        }
-
         const allNotes = [...financialNotes, ...absenceNotes].join(', ');
 
         return [
@@ -228,28 +210,49 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
             startTime,
             endTime,
             breaks,
+            daySuplMs > 0 ? calculateDurationStr(daySuplMs) : '0h 0m',
+            dayExtraWeekendMs > 0 ? calculateDurationStr(dayExtraWeekendMs) : '0h 0m',
             duration,
             valueFormatted,
             allNotes
         ];
     });
 
+    const totalValueStr = `${currency} ${totalEstimatedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
     autoTable(doc, {
-        head: [['Data', 'Entrada', 'Saída', 'Pausas', 'Total', 'Valor (Est.)', 'Obs']],
+        head: [['Data', 'Entr.', 'Saíd.', 'Pausas', 'Supl.', 'Extras', 'Total Dia', 'Valor (Est.)', 'Obs']],
         body: tableRows,
+        foot: [[
+            'TOTAL GERAL', 
+            '', 
+            '', 
+            '', 
+            calculateDurationStr(totalSuplMs), 
+            calculateDurationStr(totalExtraWeekendMs), 
+            calculateDurationStr(totalWorkedMs), 
+            totalValueStr, 
+            ''
+        ]],
         startY: 40,
-        styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
-        headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
+        headStyles: { fillColor: [63, 63, 70], textColor: 255, fontStyle: 'bold', halign: 'center' },
+        footStyles: { fillColor: [244, 244, 245], textColor: [24, 24, 27], fontStyle: 'bold', fontSize: 9 },
         columnStyles: {
             0: { cellWidth: 22 },
+            1: { halign: 'center', cellWidth: 15 },
+            2: { halign: 'center', cellWidth: 15 },
             3: { cellWidth: 35 },
-            5: { cellWidth: 25, halign: 'right', fontStyle: 'bold' },
-            6: { cellWidth: 'auto' }
+            4: { halign: 'center', cellWidth: 20, textColor: [79, 70, 229] }, // Indigo para suplementares
+            5: { halign: 'center', cellWidth: 20, textColor: [220, 38, 38] }, // Rose para extras 100%
+            6: { halign: 'center', cellWidth: 20, fontStyle: 'bold' },
+            7: { halign: 'right', cellWidth: 35 },
+            8: { cellWidth: 'auto' }
         },
-        alternateRowStyles: { fillColor: [245, 247, 255] }
+        alternateRowStyles: { fillColor: [250, 251, 255] }
     });
 
-    doc.save(`relatorio_ponto_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`relatorio_ponto_detalhado_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const formatTime = (isoString?: string) => {
@@ -264,13 +267,6 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
-  const calculateDuration = (ms: number) => {
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
-  };
-
-  // Logic for "Show More"
   const reversedLogs = [...logs].reverse();
   const visibleLogs = reversedLogs.slice(0, visibleCount);
   const hasMore = reversedLogs.length > visibleCount;
@@ -303,7 +299,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                 <button
                     onClick={handleExportPDF}
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/60 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-300 active:scale-95 border border-white/40 dark:border-white/10 backdrop-blur-sm group cursor-pointer shadow-sm"
-                    title="Exportar PDF"
+                    title="Exportar PDF Detalhado"
                 >
                     <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wide hidden sm:inline group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">PDF</span>
                     <FileText size={16} strokeWidth={2} />
@@ -344,22 +340,18 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                     }`}
                 style={{ animationDelay: `${index * 50}ms` }}
             >
-              {/* Active Indicator Strip */}
               {isCurrentLog && (
                   <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-indigo-400 to-violet-500"></div>
               )}
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 relative z-10 pl-2">
-                  {/* Time Section with Date */}
                   <div className="flex flex-col gap-2 w-full sm:w-auto">
-                      {/* Date Badge */}
                       <div className="flex items-center gap-2">
                           <Calendar size={12} className="text-indigo-500/80 dark:text-indigo-400/80" />
                           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               {formatDate(log.date)}
                           </span>
                       </div>
-
                       <div className="flex items-center gap-4 sm:gap-6 min-w-auto sm:min-w-[150px] justify-between sm:justify-start">
                           <div>
                               <div className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tighter leading-none transition-colors">
@@ -376,8 +368,6 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                           </div>
                       </div>
                   </div>
-
-                  {/* Breaks Section */}
                   <div className="flex-1 flex flex-wrap gap-2 w-full sm:w-auto">
                       {log.breaks && log.breaks.length > 0 ? (
                           log.breaks.map((brk, idx) => (
@@ -397,16 +387,11 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                           </div>
                       )}
                   </div>
-
-                  {/* Duration & Actions */}
                   <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end sm:border-l border-slate-100 dark:border-slate-700/50 sm:pl-6 pt-2 sm:pt-0 relative z-20">
                       <span className="font-mono font-bold text-slate-700 dark:text-slate-300 bg-white/60 dark:bg-slate-800/60 px-4 py-2 rounded-xl text-sm border border-white/60 dark:border-slate-600/30 shadow-sm">
-                          {calculateDuration(log.totalDurationMs)}
+                          {calculateDurationStr(log.totalDurationMs)}
                       </span>
-
-                      {/* Botões de Ação */}
                       <div className="flex items-center gap-1">
-                        {/* Botão Editar */}
                         <button
                             type="button"
                             disabled={isCurrentLog}
@@ -424,8 +409,6 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                         >
                             <Edit3 size={18} />
                         </button>
-
-                        {/* Lógica de Exclusão Inline */}
                         {deleteId === log.id && !isCurrentLog ? (
                           <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-200 absolute right-0 sm:relative bg-white dark:bg-slate-800 p-1.5 rounded-xl shadow-xl border border-rose-100 dark:border-rose-900/50 z-50">
                             <button
@@ -473,8 +456,6 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                       </div>
                   </div>
               </div>
-
-              {/* Absences Section */}
               {log.absences && log.absences.length > 0 && (
                   <div className="mt-2 pt-3 border-t border-slate-100 dark:border-slate-700/30 flex flex-col gap-2 relative z-10 transition-colors pl-2">
                       {log.absences.map((abs, idx) => (
@@ -492,11 +473,8 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                       ))}
                   </div>
               )}
-
             </div>
           )})}
-          
-          {/* Pagination Controls */}
           {(hasMore || visibleCount > ITEMS_PER_PAGE) && (
              <div className="flex items-center justify-center gap-2 pt-2 animate-in fade-in">
                  {hasMore && (

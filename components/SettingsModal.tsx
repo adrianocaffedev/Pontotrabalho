@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud } from 'lucide-react';
+import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2 } from 'lucide-react';
 import { AppSettings, AppUser } from '../types';
-import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword } from '../services/dataService';
+import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser } from '../services/dataService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -30,6 +30,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
   const [creatingUser, setCreatingUser] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  
+  // User Editing State
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingUserName, setEditingUserName] = useState('');
+  const [isUpdatingUser, setIsUpdatingUser] = useState(false);
 
   // Admin / Security State
   const [isAdmin, setIsAdmin] = useState(false);
@@ -45,6 +50,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         setActiveTab('selection');
         setIsSaving(false);
         setConfirmDeleteId(null);
+        setEditingUserId(null);
         // Reset Admin Access on Open
         setIsAdmin(false);
         setAdminPassword('');
@@ -81,10 +87,41 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
       }
   };
 
+  const handleEditClick = (user: AppUser, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setEditingUserId(user.id);
+      setEditingUserName(user.name);
+  };
+
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editingUserId || !editingUserName.trim()) return;
+
+      setIsUpdatingUser(true);
+      const { success, error } = await updateAppUser(editingUserId, editingUserName.trim());
+      setIsUpdatingUser(false);
+
+      if (success) {
+          setUsersList(prev => prev.map(u => u.id === editingUserId ? { ...u, name: editingUserName.trim() } : u));
+          
+          // Se for o usuário ativo, atualiza o estado global
+          if (currentUser?.id === editingUserId) {
+              onSelectUser({ ...currentUser, name: editingUserName.trim() });
+          }
+          
+          setEditingUserId(null);
+          setEditingUserName('');
+      } else {
+          alert("Erro ao atualizar usuário: " + error);
+      }
+  };
+
   const handleDeleteClick = (id: string, e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setConfirmDeleteId(id);
+      setEditingUserId(null); // Fecha edição se estiver aberta
   };
 
   const handleConfirmDelete = async (id: string, e: React.MouseEvent) => {
@@ -126,9 +163,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
           setAdminPassword('');
       } else {
           if (error) {
-              setAuthError(error); // Erro de sistema/banco
+              setAuthError(error); 
           } else {
-              setAuthError('Senha incorreta.'); // Erro de senha
+              setAuthError('Senha incorreta.'); 
           }
       }
   };
@@ -191,7 +228,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
     setFormData({ ...formData, holidays: currentHolidays.filter(d => d !== dateToRemove) });
   };
 
-  // Render Lock Screen if accessing protected tabs without admin rights
   const renderLockScreen = () => (
       <div className="flex flex-col items-center justify-center h-full min-h-[300px] animate-in zoom-in-95 duration-300">
           <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner relative overflow-hidden">
@@ -255,7 +291,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         {/* Header com Abas */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 shrink-0">
           <div className="flex gap-4 overflow-x-auto scrollbar-hide w-full mr-2">
-              {/* Aba Seleção */}
               <button 
                 onClick={() => setActiveTab('selection')}
                 className={`text-sm font-bold pb-1 relative transition-colors whitespace-nowrap ${activeTab === 'selection' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}
@@ -264,7 +299,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                   {activeTab === 'selection' && <div className="absolute -bottom-5 left-0 right-0 h-0.5 bg-indigo-500 rounded-t-full"></div>}
               </button>
 
-              {/* Aba Usuários */}
               <button 
                 onClick={() => setActiveTab('users')}
                 className={`text-sm font-bold pb-1 relative transition-colors whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'users' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}
@@ -274,7 +308,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                   {activeTab === 'users' && <div className="absolute -bottom-5 left-0 right-0 h-0.5 bg-indigo-500 rounded-t-full"></div>}
               </button>
               
-              {/* Aba Sistema - Liberada para todos (configuração pessoal) */}
               <button 
                 onClick={() => setActiveTab('general')}
                 className={`text-sm font-bold pb-1 relative transition-colors whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'general' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}
@@ -290,7 +323,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         
         <div className="overflow-y-auto p-4 sm:p-6 scrollbar-hide flex-1">
         
-        {/* TAB SELEÇÃO (Public Access) */}
+        {/* TAB SELEÇÃO */}
         {activeTab === 'selection' && (
             <div className="space-y-6 animate-in slide-in-from-left-4">
                 <div>
@@ -352,7 +385,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
             </div>
         )}
 
-        {/* TAB GERAL (System) - Acessível para o usuário atual */}
+        {/* TAB GERAL */}
         {activeTab === 'general' && (
             !currentUser ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-500 dark:text-slate-400 text-center animate-in zoom-in-95">
@@ -362,10 +395,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                 </div>
             ) : (
             <form id="settings-form" onSubmit={handleSubmit} className="space-y-6 animate-in slide-in-from-right-4">
-                
-                {/* Seção Financeira */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Valor Hora */}
                     <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/30 md:col-span-2">
                         <div className="flex justify-between items-start mb-2">
                             <label className="block text-sm font-semibold text-emerald-900 dark:text-emerald-400 flex items-center gap-2">
@@ -399,7 +429,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         </div>
                     </div>
 
-                    {/* Vale Refeição */}
                     <div className="bg-orange-50/50 dark:bg-orange-900/10 p-4 rounded-2xl border border-orange-100/50 dark:border-orange-900/30 md:col-span-2">
                         <label className="block text-sm font-semibold text-orange-900 dark:text-orange-400 mb-2 flex items-center gap-2">
                             <div className="p-1.5 bg-orange-100 dark:bg-orange-900/50 rounded-lg text-orange-600 dark:text-orange-300">
@@ -423,7 +452,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                     </div>
                 </div>
 
-                {/* Carga Horária */}
                 <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30">
                     <label className="block text-sm font-semibold text-indigo-900 dark:text-indigo-300 mb-2 flex items-center gap-2">
                     <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg text-indigo-600 dark:text-indigo-300">
@@ -442,7 +470,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                     />
                 </div>
 
-                {/* Horas Extras */}
                 <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/30 space-y-4">
                     <label className="block text-sm font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
                     <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg text-emerald-600 dark:text-emerald-300">
@@ -465,7 +492,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
                     <div>
                         <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5"><Calendar size={12} /> Dias 100% Extras</label>
-                        {/* Grade Responsiva: 4 colunas no mobile, 7 no desktop */}
                         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 bg-emerald-100/50 dark:bg-emerald-900/20 p-2 rounded-xl">
                         {daysOfWeek.map((day, index) => (
                             <button
@@ -485,7 +511,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         </div>
                     </div>
 
-                    {/* System Holidays - READ ONLY */}
                     {systemHolidays && systemHolidays.length > 0 && (
                         <div>
                              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
@@ -503,12 +528,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         </div>
                     )}
 
-                    {/* Manual Holidays - EDITABLE */}
                     <div>
                         <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
-                            <Calendar size={12} /> Feriados Manuais (Municipais/Outros)
+                            <Calendar size={12} /> Feriados Manuais
                         </label>
-                        
                         <div className="flex gap-2 mb-3">
                             <input 
                                 type="date" 
@@ -524,7 +547,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                 <Plus size={16} />
                             </button>
                         </div>
-
                         <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto pr-1 scrollbar-hide">
                             {formData.holidays && formData.holidays.length > 0 ? (
                                 formData.holidays.map((date) => (
@@ -586,7 +608,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
             )
         )}
 
-        {/* TAB USUÁRIOS (Protected) */}
+        {/* TAB USUÁRIOS */}
         {activeTab === 'users' && (
             !isAdmin ? renderLockScreen() : (
             <div className="space-y-6 animate-in slide-in-from-right-4">
@@ -631,18 +653,46 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                     key={user.id}
                                     className="flex items-center justify-between p-3 rounded-xl border bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-slate-600 transition-all"
                                 >
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 flex-1 overflow-hidden">
                                         <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center text-xs font-bold uppercase shrink-0">
                                             {user.name.substring(0, 2)}
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-semibold text-sm text-slate-700 dark:text-slate-300 break-words line-clamp-1">
-                                                {user.name}
-                                            </span>
+                                        <div className="flex-1 overflow-hidden">
+                                            {editingUserId === user.id ? (
+                                                <form onSubmit={handleSaveEditUser} className="flex items-center gap-2">
+                                                    <input 
+                                                        type="text"
+                                                        value={editingUserName}
+                                                        onChange={(e) => setEditingUserName(e.target.value)}
+                                                        className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-900 border border-indigo-300 dark:border-indigo-800 rounded outline-none text-sm dark:text-white"
+                                                        autoFocus
+                                                    />
+                                                    <button type="submit" disabled={isUpdatingUser} className="text-emerald-500 hover:text-emerald-600 shrink-0">
+                                                        {isUpdatingUser ? <Loader2 size={16} className="animate-spin" /> : <Check size={18} strokeWidth={3} />}
+                                                    </button>
+                                                    <button type="button" onClick={() => setEditingUserId(null)} className="text-slate-400 hover:text-slate-600 shrink-0">
+                                                        <X size={18} strokeWidth={3} />
+                                                    </button>
+                                                </form>
+                                            ) : (
+                                                <span className="font-semibold text-sm text-slate-700 dark:text-slate-300 break-words line-clamp-1">
+                                                    {user.name}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-1 shrink-0">
+                                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                                    {editingUserId !== user.id && confirmDeleteId !== user.id && (
+                                        <button 
+                                            onClick={(e) => handleEditClick(user, e)}
+                                            className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors cursor-pointer"
+                                            title="Editar nome"
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                    )}
+
                                     {confirmDeleteId === user.id ? (
                                         <>
                                             <button 
@@ -663,14 +713,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                             </button>
                                         </>
                                     ) : (
-                                        <button 
-                                            type="button"
-                                            onClick={(e) => handleDeleteClick(user.id, e)}
-                                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors cursor-pointer"
-                                            title="Remover usuário"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        editingUserId !== user.id && (
+                                            <button 
+                                                type="button"
+                                                onClick={(e) => handleDeleteClick(user.id, e)}
+                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors cursor-pointer"
+                                                title="Remover usuário"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )
                                     )}
                                     </div>
                                 </div>
@@ -684,8 +736,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
         </div>
 
-        {/* Footer com Ações */}
-        {/* Mostra o footer apenas se for TAB GERAL (editável para todos) ou TAB USUÁRIOS (apenas admin) */}
         {((activeTab === 'general' && !!currentUser) || (activeTab === 'users' && isAdmin)) && (
             <div className="p-4 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 flex justify-end gap-3 animate-in slide-in-from-bottom-2">
                 <button
