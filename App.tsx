@@ -8,7 +8,7 @@ import SettingsModal from './components/SettingsModal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon, LogOut, Lock, ChevronRight, Loader2, User, Key, ArrowRight, Delete } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon, LogOut, Lock, ChevronRight, Loader2, User, Key, ArrowRight, Delete, Code2 } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
@@ -32,6 +32,15 @@ const generateId = () => {
         return v.toString(16);
     });
 };
+
+const Signature = () => (
+    <div className="flex justify-center mt-8 animate-in fade-in slide-in-from-bottom-2 duration-1000 delay-500">
+        <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900/50 group cursor-default">
+            <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-tighter text-sm">{"</>"}</span>
+            <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-[0.2em]">Por Adriano Caffé</span>
+        </div>
+    </div>
+);
 
 const StatCard = ({ icon: Icon, label, value, subValue, active, colorClass, delay }: any) => (
     <div 
@@ -179,7 +188,6 @@ const App: React.FC = () => {
   const handlePinInput = (val: string) => {
       if (pinBuffer.length >= 4) return;
       
-      // Tentar encontrar o usuário se ainda não estiver selecionado explicitamente
       const user = selectedLoginUser || usersList.find(u => u.name.toLowerCase().trim() === searchName.toLowerCase().trim());
       
       if (!user) {
@@ -192,11 +200,8 @@ const App: React.FC = () => {
       setPinBuffer(newPin);
 
       if (newPin.length === 4) {
-          // Normalização do PIN para evitar erros de tipo/espaço
           const storedPin = String(user.pin || '').trim();
           const enteredPin = String(newPin).trim();
-          
-          // Se não houver PIN definido, aceita 0000 por padrão para segurança inicial
           const isValid = storedPin ? enteredPin === storedPin : enteredPin === '0000';
 
           if (isValid) {
@@ -345,7 +350,7 @@ const App: React.FC = () => {
 
   if (!activeUser && !isLoadingData) {
       return (
-        <div className={`min-h-screen flex items-center justify-center p-6 transition-colors duration-500 ${theme === 'dark' ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
+        <div className={`min-h-screen flex flex-col items-center justify-center p-6 transition-colors duration-500 ${theme === 'dark' ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
             <div className="max-w-lg w-full animate-in zoom-in-95 duration-500">
                 <div className="text-center mb-10">
                     <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/20 rotate-3">
@@ -425,11 +430,16 @@ const App: React.FC = () => {
                     </div>
 
                     <div className="mt-8 pt-6 border-t dark:border-slate-800 flex justify-center">
-                        <button onClick={() => setIsSettingsOpen(true)} className="flex items-center gap-2 px-6 py-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all shadow-sm">
-                            <SettingsIcon size={14} /> Configurações Admin
+                        <button 
+                            onClick={() => setIsSettingsOpen(true)} 
+                            className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-500 hover:text-white transition-all shadow-sm active:scale-90"
+                            title="Configurações Admin"
+                        >
+                            <SettingsIcon size={20} />
                         </button>
                     </div>
                 </div>
+                <Signature />
             </div>
             <SettingsModal isOpen={isSettingsOpen} onClose={() => { setIsSettingsOpen(false); refreshUsersList(); }} settings={settings} onSave={handleSaveSettings} currentUser={null} onSelectUser={setActiveUser} systemHolidays={systemHolidays} />
         </div>
@@ -502,8 +512,11 @@ const App: React.FC = () => {
             </main>
         )}
         
-        <footer className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-             Ponto Inteligente v1.2 | Logado como {activeUser?.name}
+        <footer className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 text-center flex flex-col items-center gap-4">
+             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Ponto Inteligente v1.2 | Logado como {activeUser?.name}
+             </div>
+             <Signature />
         </footer>
       </div>
 
