@@ -18,30 +18,30 @@ export interface Absence {
   id: string;
   type: 'FULL_DAY' | 'PARTIAL';
   reason: string;
-  startTime?: string; // Obrigatório se PARTIAL
-  endTime?: string;   // Obrigatório se PARTIAL
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface TimeLog {
   id: string;
-  date: string; // ISO String YYYY-MM-DD
-  startTime: string; // ISO timestamp
-  breaks: Break[]; // Supports multiple breaks (Coffee + Lunch in same day)
-  absences: Absence[]; // Lista de ausências justificadas
-  endTime?: string; // ISO timestamp
-  totalDurationMs: number; // milliseconds
+  date: string;
+  startTime: string;
+  breaks: Break[];
+  absences: Absence[];
+  endTime?: string;
+  totalDurationMs: number;
 }
 
 export interface AppSettings {
-  dailyWorkHours: number; // Horas de trabalho diário (ex: 8)
-  lunchDurationMinutes: number; // Tempo de almoço em minutos (ex: 60)
-  notificationMinutes: number; // Minutos antes de acabar para avisar (ex: 10)
-  hourlyRate: number; // Valor da hora
-  foodAllowance: number; // Vale Refeição Diário
-  currency: string; // Moeda (BRL, EUR, USD)
-  overtimePercentage: number; // Percentual de bônus para horas extras
-  overtimeDays: number[]; // Dias da semana considerados 100% extra (0=Dom, 1=Seg...)
-  holidays: string[]; // Lista de datas (YYYY-MM-DD) que são feriados (100% extra)
+  dailyWorkHours: number;
+  lunchDurationMinutes: number;
+  notificationMinutes: number;
+  hourlyRate: number;
+  foodAllowance: number;
+  currency: string;
+  overtimePercentage: number;
+  overtimeDays: number[];
+  holidays: string[];
 }
 
 export interface AnalysisResult {
@@ -64,5 +64,6 @@ export interface AppUser {
   contractType?: 'EFFECTIVE' | 'TEMPORARY';
   contractStartDate?: string;
   renewals?: ContractRenewal[];
+  pin?: string; // Novo campo para segurança da sessão
   created_at?: string;
 }

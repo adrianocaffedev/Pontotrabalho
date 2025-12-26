@@ -9,6 +9,7 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal } from '../types';
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS contract_type TEXT DEFAULT 'EFFECTIVE';
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS contract_start_date TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS renewals JSONB DEFAULT '[]'::JSONB;
+ * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS pin TEXT;
  */
 
 const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
@@ -58,6 +59,7 @@ const mapUserFromDb = (dbUser: any): AppUser => {
     contractType: (dbUser.contract_type as 'EFFECTIVE' | 'TEMPORARY') || 'EFFECTIVE',
     contractStartDate: dbUser.contract_start_date || '',
     renewals: Array.isArray(dbUser.renewals) ? dbUser.renewals : [],
+    pin: dbUser.pin || '', // Adicionado mapeamento do PIN
     created_at: dbUser.created_at
   };
 };
@@ -81,6 +83,7 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
         contract_type: userData.contractType || 'EFFECTIVE',
         contract_start_date: userData.contractStartDate || '',
         renewals: userData.renewals || [],
+        pin: userData.pin || '', // Adicionado campo PIN na criação
         active: true
       })
       .select()
@@ -113,9 +116,9 @@ export const updateAppUser = async (id: string, userData: Partial<AppUser>): Pro
     if (userData.company !== undefined) payload.company = String(userData.company);
     if (userData.contractType !== undefined) payload.contract_type = String(userData.contractType);
     if (userData.contractStartDate !== undefined) payload.contract_start_date = String(userData.contractStartDate);
+    if (userData.pin !== undefined) payload.pin = String(userData.pin); // Adicionado campo PIN na atualização
     
     if (userData.renewals !== undefined) {
-      // Importante: garantir que o JSON enviado é serializável
       payload.renewals = JSON.parse(JSON.stringify(userData.renewals));
     }
 
@@ -253,6 +256,7 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
     food_allowance: settings.foodAllowance,
     currency: settings.currency,
     overtime_percentage: settings.overtimePercentage,
+    // Fix: settings.overtime_days to settings.overtimeDays
     overtime_days: settings.overtimeDays || [], 
     holidays: settings.holidays || [], 
     user_id: userId
