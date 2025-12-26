@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck } from 'lucide-react';
+import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays } from 'lucide-react';
 import { AppSettings, AppUser, ContractRenewal } from '../types';
 import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser } from '../services/dataService';
 
@@ -22,7 +22,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
   const [usersList, setUsersList] = useState<AppUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
   const [newUser, setNewUser] = useState<Partial<AppUser>>({
     name: '',
@@ -44,12 +43,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 
   useEffect(() => {
     if (isOpen) {
+        setFormData(settings);
         if (!currentUser) {
             setActiveTab('users');
             setIsAdmin(false);
         } else {
             setActiveTab('general');
-            setFormData(settings);
         }
         fetchUsers();
     }
@@ -117,6 +116,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
       setIsVerifying(false);
   };
 
+  const toggleDay = (day: number) => {
+      const currentDays = formData.overtimeDays || [];
+      const newDays = currentDays.includes(day)
+          ? currentDays.filter(d => d !== day)
+          : [...currentDays, day];
+      setFormData({ ...formData, overtimeDays: newDays });
+  };
+
+  const daysOfWeek = [
+      { id: 0, label: 'D' },
+      { id: 1, label: 'S' },
+      { id: 2, label: 'T' },
+      { id: 3, label: 'Q' },
+      { id: 4, label: 'Q' },
+      { id: 5, label: 'S' },
+      { id: 6, label: 'S' }
+  ];
+
   if (!isOpen) return null;
 
   return (
@@ -134,9 +151,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
               ) : (
                   <h3 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     {activeTab === 'general' ? (
-                        <><SettingsIcon size={16} className="text-indigo-500"/> Configurações de Jornada</>
+                        <><SettingsIcon size={16} className="text-indigo-500"/> Configurações Globais</>
                     ) : (
-                        <><Users size={16} className="text-indigo-500"/> Gestão de Colaboradores</>
+                        <><Users size={16} className="text-indigo-500"/> Área Restrita</>
                     )}
                   </h3>
               )}
@@ -147,23 +164,89 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         <div className="overflow-y-auto p-6 flex-1 scrollbar-hide">
         
         {activeTab === 'general' && (
-            <form onSubmit={handleSaveGeneral} className="space-y-6 animate-in slide-in-from-left-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Clock size={12}/> Carga Horária</label>
-                        <input type="number" value={formData.dailyWorkHours} onChange={e => setFormData({...formData, dailyWorkHours: Number(e.target.value)})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+            <form onSubmit={handleSaveGeneral} className="space-y-8 animate-in slide-in-from-left-4 pb-4">
+                {/* Seção 1: Jornada de Trabalho */}
+                <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <Clock size={12} className="text-indigo-500"/> Regras de Jornada
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Carga Diária (Horas)</label>
+                            <input type="number" step="0.5" value={formData.dailyWorkHours} onChange={e => setFormData({...formData, dailyWorkHours: Number(e.target.value)})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Duração Almoço (Min)</label>
+                            <input type="number" value={formData.lunchDurationMinutes} onChange={e => setFormData({...formData, lunchDurationMinutes: Number(e.target.value)})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        </div>
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Coins size={12}/> Valor Hora</label>
-                        <input type="number" value={formData.hourlyRate} onChange={e => setFormData({...formData, hourlyRate: Number(e.target.value)})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><BellRing size={10}/> Notificação antes de sair (Minutos)</label>
+                        <input type="number" value={formData.notificationMinutes} onChange={e => setFormData({...formData, notificationMinutes: Number(e.target.value)})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
                     </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Utensils size={12}/> Vale Refeição (Diário)</label>
-                    <input type="number" value={formData.foodAllowance} onChange={e => setFormData({...formData, foodAllowance: Number(e.target.value)})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+
+                {/* Seção 2: Financeiro */}
+                <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <Coins size={12} className="text-emerald-500"/> Configurações Financeiras
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Valor Hora</label>
+                            <div className="relative">
+                                <input type="number" step="0.01" value={formData.hourlyRate} onChange={e => setFormData({...formData, hourlyRate: Number(e.target.value)})} className="w-full p-2.5 pl-8 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">$</span>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Subsídio Almoço (Dia)</label>
+                            <input type="number" step="0.01" value={formData.foodAllowance} onChange={e => setFormData({...formData, foodAllowance: Number(e.target.value)})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Percent size={10}/> Extra (%) em Dia Útil</label>
+                            <input type="number" value={formData.overtimePercentage} onChange={e => setFormData({...formData, overtimePercentage: Number(e.target.value)})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Globe size={10}/> Moeda</label>
+                            <select value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20">
+                                <option value="EUR">Euro (€)</option>
+                                <option value="BRL">Real (R$)</option>
+                                <option value="USD">Dólar ($)</option>
+                                <option value="GBP">Libra (£)</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <button type="submit" disabled={isSaving} className="w-full py-3.5 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
-                    {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={20}/>} Salvar Alterações
+
+                {/* Seção 3: Dias de Descanso (Sáb/Dom etc) */}
+                <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <CalendarDays size={12} className="text-orange-500"/> Dias com Valor Dobrado (100% Extra)
+                    </h4>
+                    <div className="flex justify-between gap-1 p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl border dark:border-slate-700">
+                        {daysOfWeek.map((day) => (
+                            <button
+                                key={day.id}
+                                type="button"
+                                onClick={() => toggleDay(day.id)}
+                                className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all ${
+                                    (formData.overtimeDays || []).includes(day.id)
+                                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20 scale-105'
+                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                }`}
+                            >
+                                {day.label}
+                            </button>
+                        ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400 italic text-center">Clique nos dias que são considerados folga remunerada a 100%.</p>
+                </div>
+
+                <button type="submit" disabled={isSaving} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 mt-6">
+                    {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={20}/>} Salvar Todas as Configurações
                 </button>
 
                 {!isAdmin && (
@@ -171,9 +254,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         <button 
                             type="button"
                             onClick={() => { setActiveTab('users'); setIsAdmin(false); }}
-                            className="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-500 hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest"
+                            className="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-500 hover:border-indigo-500/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest"
                         >
-                            <Lock size={14} /> Acesso Administrativo
+                            <Lock size={14} /> Acesso à Gestão de Equipe
                         </button>
                     </div>
                 )}
@@ -185,15 +268,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                 <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800/50 rounded-3xl flex items-center justify-center mb-6 shadow-inner border border-slate-100 dark:border-slate-700">
                     <ShieldCheck className="text-indigo-500" size={32} />
                 </div>
-                <h3 className="font-bold text-slate-800 dark:text-white mb-2">Área Restrita</h3>
-                <p className="text-xs text-slate-400 font-medium mb-8 text-center max-w-[240px]">A gestão de equipe requer autenticação do administrador.</p>
+                <h3 className="font-bold text-slate-800 dark:text-white mb-2 text-center">Gestão de Colaboradores</h3>
+                <p className="text-xs text-slate-400 font-medium mb-8 text-center max-w-[240px]">Para gerenciar a lista de funcionários, você precisa ser administrador.</p>
                 <form onSubmit={handleAdminLogin} className="w-full max-w-xs space-y-4">
                     <div className="relative">
                         <input 
                             type="password" 
                             value={adminPassword} 
                             onChange={e => setAdminPassword(e.target.value)} 
-                            placeholder="Senha Administrativa" 
+                            placeholder="PIN Administrativo" 
                             className="w-full p-4 pl-12 border dark:border-slate-700 rounded-2xl dark:bg-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center tracking-[0.5em] font-bold" 
                             autoFocus
                         />
@@ -204,14 +287,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         {isVerifying ? <Loader2 className="animate-spin"/> : 'Desbloquear Acesso'}
                     </button>
                     {currentUser && (
-                        <button type="button" onClick={() => setActiveTab('general')} className="w-full text-slate-400 text-[10px] font-bold uppercase tracking-widest pt-2 hover:text-slate-600 dark:hover:text-slate-200">Voltar para Configurações</button>
+                        <button type="button" onClick={() => setActiveTab('general')} className="w-full text-slate-400 text-[10px] font-bold uppercase tracking-widest pt-2 hover:text-slate-600 dark:hover:text-slate-200">Voltar para Minha Jornada</button>
                     )}
                 </form>
             </div>
         ) : (
             <div className="space-y-6 animate-in slide-in-from-right-4">
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-3xl border border-dashed dark:border-slate-700">
-                    <h4 className="text-sm font-bold mb-4 flex items-center gap-2 dark:text-white"><UserPlus size={16} className="text-indigo-500"/> Novo Funcionário</h4>
+                    <h4 className="text-sm font-bold mb-4 flex items-center gap-2 dark:text-white"><UserPlus size={16} className="text-indigo-500"/> Cadastrar Funcionário</h4>
                     <div className="space-y-3">
                         <input placeholder="Nome Completo" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-sm dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         <div className="grid grid-cols-2 gap-2">
@@ -219,13 +302,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                             <input placeholder="PIN (4 dígitos)" maxLength={4} value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="w-full p-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-sm font-mono dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         </div>
                         <button onClick={handleCreateUser} disabled={creatingUser || !newUser.name} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md">
-                            {creatingUser ? <Loader2 className="animate-spin" size={16}/> : <Plus size={16}/>} Cadastrar Colaborador
+                            {creatingUser ? <Loader2 className="animate-spin" size={16}/> : <Plus size={16}/>} Adicionar à Lista
                         </button>
                     </div>
                 </div>
 
-                <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">Colaboradores Cadastrados ({usersList.length})</h4>
+                <div className="space-y-3 pb-4">
+                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">Equipe Cadastrada ({usersList.length})</h4>
                     <div className="space-y-2">
                         {usersList.map(user => (
                             <div key={user.id} className="p-4 bg-white dark:bg-slate-800 border dark:border-slate-800 rounded-2xl shadow-sm transition-all hover:border-slate-200 dark:hover:border-slate-700">
@@ -252,13 +335,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                             <div>
                                                 <p className="font-bold text-slate-800 dark:text-white text-sm">{user.name}</p>
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                                                    <span className="text-indigo-500">{user.company || 'Geral'}</span> • PIN: {user.pin ? '****' : 'OFF'}
+                                                    <span className="text-indigo-500">{user.company || 'Sem Empresa'}</span> • PIN: {user.pin ? 'Ativo' : '0000'}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex gap-1">
                                             <button onClick={() => handleEditClick(user)} className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all" title="Editar"><Edit2 size={16}/></button>
-                                            <button onClick={() => setConfirmDeleteId(user.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Excluir"><Trash2 size={16}/></button>
+                                            <button onClick={async () => { if(confirm(`Excluir ${user.name}?`)) await deleteAppUser(user.id); fetchUsers(); }} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all" title="Excluir"><Trash2 size={16}/></button>
                                         </div>
                                     </div>
                                 )}
