@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays } from 'lucide-react';
+import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Heart, Copy, Smartphone, ExternalLink } from 'lucide-react';
 import { AppSettings, AppUser, ContractRenewal } from '../types';
 import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser } from '../services/dataService';
 
@@ -23,6 +23,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   
+  // Donation State
+  const [donationAmount, setDonationAmount] = useState<string>('5');
+  const [copied, setCopied] = useState(false);
+  const mbWayNumber = "+351968975732";
+
   const [newUser, setNewUser] = useState<Partial<AppUser>>({
     name: '',
     company: '',
@@ -114,6 +119,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
           setAuthError(error || 'Senha incorreta.');
       }
       setIsVerifying(false);
+  };
+
+  const handleCopyNumber = () => {
+    navigator.clipboard.writeText(mbWayNumber);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const toggleDay = (day: number) => {
@@ -248,6 +259,81 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                 <button type="submit" disabled={isSaving} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 mt-6">
                     {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={20}/>} Salvar Todas as Configurações
                 </button>
+
+                {/* Secção de Doação MBWay */}
+                <div className="mt-8 pt-8 border-t dark:border-slate-800 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 rounded-3xl p-6 border border-indigo-100 dark:border-indigo-800/30 flex flex-col items-center gap-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Heart size={16} className="text-rose-500 fill-rose-500 animate-pulse" />
+                            <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-widest">Apoie o Projeto (MBWay)</h4>
+                        </div>
+                        
+                        <div className="w-full space-y-4">
+                            <div className="flex items-center gap-2 justify-center">
+                                {[2, 5, 10].map(val => (
+                                    <button 
+                                        key={val}
+                                        type="button"
+                                        onClick={() => setDonationAmount(val.toString())}
+                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${donationAmount === val.toString() ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border dark:border-slate-700'}`}
+                                    >
+                                        {val}€
+                                    </button>
+                                ))}
+                                <div className="relative flex-1 max-w-[100px]">
+                                    <input 
+                                        type="number" 
+                                        value={donationAmount} 
+                                        onChange={e => setDonationAmount(e.target.value)}
+                                        className="w-full p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-center"
+                                        placeholder="Outro"
+                                    />
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">€</span>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-4 py-2">
+                                <div className="p-3 bg-white rounded-2xl shadow-inner border-4 border-indigo-50 dark:border-slate-800 relative group">
+                                    <img 
+                                        // Alterado para um formato que a app MBWay reconhece melhor ao ser lido pelo scanner interno
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${mbWayNumber}`} 
+                                        alt="QR Code MBWay" 
+                                        className="w-32 h-32 opacity-90 hover:opacity-100 transition-opacity"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/40 pointer-events-none rounded-xl">
+                                        <Smartphone className="text-indigo-600" size={24} />
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-center w-full">
+                                    <div className="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl border dark:border-slate-700 shadow-sm w-full justify-center">
+                                        <Smartphone size={16} className="text-indigo-500" />
+                                        <span className="text-sm font-mono font-bold dark:text-white">{mbWayNumber}</span>
+                                        <button 
+                                            type="button"
+                                            onClick={handleCopyNumber}
+                                            className={`p-1.5 rounded-lg transition-all ${copied ? 'bg-emerald-500 text-white' : 'hover:bg-indigo-100 dark:hover:bg-slate-700 text-slate-400'}`}
+                                        >
+                                            {copied ? <Check size={14} /> : <Copy size={14} />}
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="mt-4 w-full space-y-2">
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center px-4 leading-relaxed">
+                                            Importante: Abra a App MBWay e use o botão <span className="text-indigo-500">"Ler QR Code"</span> para transferir {donationAmount}€.
+                                        </p>
+                                        
+                                        <a 
+                                            href={`tel:${mbWayNumber}`}
+                                            className="flex items-center justify-center gap-2 w-full py-2.5 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest hover:bg-slate-50 transition-colors shadow-sm"
+                                        >
+                                            <ExternalLink size={12} /> Abrir Contacto / Telefonar
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {!isAdmin && (
                     <div className="pt-6 border-t dark:border-slate-800 mt-6">
