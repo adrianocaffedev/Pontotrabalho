@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Heart, Copy, Smartphone, ExternalLink } from 'lucide-react';
+import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Heart, Copy, Smartphone, ExternalLink, QrCode } from 'lucide-react';
 import { AppSettings, AppUser, ContractRenewal } from '../types';
 import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser } from '../services/dataService';
 
@@ -125,6 +125,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
     navigator.clipboard.writeText(mbWayNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenMBWay = () => {
+    window.location.href = 'mbway://';
+    // Fallback se não abrir
+    setTimeout(() => {
+        if (confirm("Não conseguimos abrir o MBWay automaticamente. Quer tentar abrir a ligação direta?")) {
+            window.location.href = `tel:${mbWayNumber}`;
+        }
+    }, 500);
   };
 
   const toggleDay = (day: number) => {
@@ -256,26 +266,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                     <p className="text-[10px] text-slate-400 italic text-center">Clique nos dias que são considerados folga remunerada a 100%.</p>
                 </div>
 
-                <button type="submit" disabled={isSaving} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 mt-6">
-                    {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={20}/>} Salvar Todas as Configurações
+                <button type="submit" disabled={isSaving} className="w-full py-4 bg-[#6366f1] text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1 mt-6">
+                    <span className="flex items-center gap-2">
+                        {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={20}/>}
+                        Salvar Todas as Configurações
+                    </span>
                 </button>
 
                 {/* Secção de Doação MBWay */}
                 <div className="mt-8 pt-8 border-t dark:border-slate-800 animate-in fade-in slide-in-from-bottom-4">
-                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 rounded-3xl p-6 border border-indigo-100 dark:border-indigo-800/30 flex flex-col items-center gap-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Heart size={16} className="text-rose-500 fill-rose-500 animate-pulse" />
-                            <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-widest">Apoie o Projeto (MBWay)</h4>
+                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 rounded-[2.5rem] p-8 border border-indigo-100 dark:border-indigo-800/30 flex flex-col items-center gap-6">
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-sm mb-2 border border-indigo-50 dark:border-slate-700">
+                                <Heart size={24} className="text-rose-500 fill-rose-500" />
+                            </div>
+                            <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-[0.2em] text-center">Apoie o Projeto</h4>
                         </div>
                         
-                        <div className="w-full space-y-4">
+                        <div className="w-full space-y-6">
                             <div className="flex items-center gap-2 justify-center">
                                 {[2, 5, 10].map(val => (
                                     <button 
                                         key={val}
                                         type="button"
                                         onClick={() => setDonationAmount(val.toString())}
-                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${donationAmount === val.toString() ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border dark:border-slate-700'}`}
+                                        className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all ${donationAmount === val.toString() ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border dark:border-slate-700'}`}
                                     >
                                         {val}€
                                     </button>
@@ -285,49 +300,56 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                         type="number" 
                                         value={donationAmount} 
                                         onChange={e => setDonationAmount(e.target.value)}
-                                        className="w-full p-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-center"
-                                        placeholder="Outro"
+                                        className="w-full p-2.5 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl text-xs font-bold dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-center"
+                                        placeholder="Valor"
                                     />
-                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">€</span>
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold">€</span>
                                 </div>
                             </div>
 
-                            <div className="flex flex-col items-center gap-4 py-2">
-                                <div className="p-3 bg-white rounded-2xl shadow-inner border-4 border-indigo-50 dark:border-slate-800 relative group">
-                                    <img 
-                                        // Alterado para um formato que a app MBWay reconhece melhor ao ser lido pelo scanner interno
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${mbWayNumber}`} 
-                                        alt="QR Code MBWay" 
-                                        className="w-32 h-32 opacity-90 hover:opacity-100 transition-opacity"
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/40 pointer-events-none rounded-xl">
-                                        <Smartphone className="text-indigo-600" size={24} />
+                            <div className="flex flex-col items-center gap-6">
+                                <div className="relative group">
+                                    <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-[2rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                                    <div className="relative p-5 bg-white rounded-[1.8rem] shadow-xl border border-indigo-50">
+                                        <img 
+                                            // QR Code configurado apenas com o número de telemóvel para reconhecimento na app MBWay
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${mbWayNumber}&margin=10`} 
+                                            alt="QR Code MBWay" 
+                                            className="w-40 h-40"
+                                        />
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-1 rounded-lg">
+                                            <QrCode className="text-indigo-600" size={24} />
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-center w-full">
-                                    <div className="flex items-center gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl border dark:border-slate-700 shadow-sm w-full justify-center">
-                                        <Smartphone size={16} className="text-indigo-500" />
-                                        <span className="text-sm font-mono font-bold dark:text-white">{mbWayNumber}</span>
-                                        <button 
-                                            type="button"
-                                            onClick={handleCopyNumber}
-                                            className={`p-1.5 rounded-lg transition-all ${copied ? 'bg-emerald-500 text-white' : 'hover:bg-indigo-100 dark:hover:bg-slate-700 text-slate-400'}`}
-                                        >
-                                            {copied ? <Check size={14} /> : <Copy size={14} />}
-                                        </button>
-                                    </div>
-                                    
-                                    <div className="mt-4 w-full space-y-2">
-                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center px-4 leading-relaxed">
-                                            Importante: Abra a App MBWay e use o botão <span className="text-indigo-500">"Ler QR Code"</span> para transferir {donationAmount}€.
-                                        </p>
-                                        
-                                        <a 
-                                            href={`tel:${mbWayNumber}`}
-                                            className="flex items-center justify-center gap-2 w-full py-2.5 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest hover:bg-slate-50 transition-colors shadow-sm"
-                                        >
-                                            <ExternalLink size={12} /> Abrir Contacto / Telefonar
-                                        </a>
+
+                                <div className="w-full space-y-4">
+                                    <button 
+                                        onClick={handleOpenMBWay}
+                                        className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] font-bold flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl hover:shadow-indigo-500/10"
+                                    >
+                                        <Smartphone size={20} />
+                                        Pagar Agora com MBWay
+                                    </button>
+
+                                    <div className="bg-white/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-indigo-50 dark:border-slate-700 flex flex-col gap-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Número MBWay</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-mono font-bold dark:text-white">{mbWayNumber}</span>
+                                                <button onClick={handleCopyNumber} className={`p-1.5 rounded-lg transition-all ${copied ? 'bg-emerald-500 text-white' : 'hover:bg-indigo-100 dark:hover:bg-slate-700 text-slate-400'}`}>
+                                                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="h-[1px] bg-indigo-50 dark:bg-slate-700"></div>
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed text-center">
+                                                1. Abra a App MBWay<br/>
+                                                2. Escolha <span className="text-indigo-600 dark:text-indigo-400">"Pagar com QR Code"</span> no menu inferior<br/>
+                                                3. Aponte para o código e confirme o valor
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
