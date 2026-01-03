@@ -89,6 +89,7 @@ const App: React.FC = () => {
   const [editingLog, setEditingLog] = useState<TimeLog | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [dbConnected, setDbConnected] = useState<boolean | null>(null);
   
   // Login State
   const [usersList, setUsersList] = useState<AppUser[]>([]);
@@ -124,7 +125,14 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const triggerHeartbeat = async () => { if (navigator.onLine) await keepAlive(); };
+    const triggerHeartbeat = async () => { 
+        if (navigator.onLine) {
+            const alive = await keepAlive();
+            setDbConnected(alive);
+        } else {
+            setDbConnected(false);
+        }
+    };
     const intervalId = setInterval(triggerHeartbeat, 10 * 60 * 1000);
     const handleVisibilityChange = () => { if (document.visibilityState === 'visible') triggerHeartbeat(); };
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -454,7 +462,7 @@ const App: React.FC = () => {
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col min-h-screen">
-        <header className="flex justify-between items-center mb-8 sm:mb-12">
+        <header className="flex flex-col sm:flex-row justify-between items-center mb-8 sm:mb-12 gap-6">
           <div className="flex items-center gap-3">
              <div className="bg-white dark:bg-slate-800 p-2 sm:p-3 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700">
                 <ClockIcon size={24} className="text-indigo-600 dark:text-indigo-400" />
@@ -465,7 +473,14 @@ const App: React.FC = () => {
              </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm">
+                <Database size={14} className={dbConnected ? "text-emerald-500" : "text-rose-500"} />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {dbConnected ? 'Online' : 'Offline'}
+                </span>
+                <span className={`w-1.5 h-1.5 rounded-full ${dbConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+             </div>
              <button onClick={toggleTheme} className="p-2 sm:p-3 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/80 transition-all text-slate-600 dark:text-slate-400"><Sun size={18}/></button>
              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all">
                 <LogOut size={16} /> <span className="hidden sm:inline">Sair</span>
