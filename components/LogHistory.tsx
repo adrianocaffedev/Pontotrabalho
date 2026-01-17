@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { TimeLog, AppUser, AppSettings } from '../types';
-import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock, Edit3, Calendar, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock, Edit3, Calendar, FileText, ChevronDown, ChevronUp, CalendarRange, Filter } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -21,6 +21,17 @@ const ITEMS_PER_PAGE = 3;
 const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHolidays, onDelete, onEdit, onAddManual, currentLogId }) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  
+  // Estados para o filtro de relatório
+  const [reportStart, setReportStart] = useState(() => {
+    const d = new Date();
+    d.setDate(1); // Primeiro dia do mês atual
+    return d.toISOString().split('T')[0];
+  });
+  const [reportEnd, setReportEnd] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
   
   const handleDownloadBackup = () => {
     if (logs.length === 0) return;
@@ -130,7 +141,19 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
   const handleExportPDF = () => {
     if (logs.length === 0) return;
 
-    const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem para caber mais colunas
+    // Filtragem por data
+    const filteredLogs = logs.filter(log => {
+      if (reportStart && log.date < reportStart) return false;
+      if (reportEnd && log.date > reportEnd) return false;
+      return true;
+    });
+
+    if (filteredLogs.length === 0) {
+      alert("Nenhum registro encontrado no período selecionado.");
+      return;
+    }
+
+    const doc = new jsPDF('l', 'mm', 'a4');
     const currency = settings.currency === 'BRL' ? 'R$' : settings.currency === 'USD' ? '$' : '€';
     
     doc.setFontSize(18);
@@ -140,13 +163,14 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
     const dateStr = new Date().toLocaleDateString('pt-BR');
-    doc.text(`Data de Emissão: ${dateStr}`, 14, 28);
+    doc.text(`Período: ${reportStart.split('-').reverse().join('/')} até ${reportEnd.split('-').reverse().join('/')}`, 14, 28);
+    doc.text(`Data de Emissão: ${dateStr}`, 14, 33);
     
     if (user) {
-        doc.text(`Funcionário: ${user.name}`, 14, 33);
+        doc.text(`Funcionário: ${user.name}`, 14, 38);
     }
 
-    const sortedLogs = [...logs].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    const sortedLogs = [...filteredLogs].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
     const allHolidays = [...(settings.holidays || []), ...systemHolidays];
 
     let totalWorkedMs = 0;
@@ -173,7 +197,6 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
         let daySuplMs = 0;
         let dayExtraWeekendMs = 0;
 
-        // SEPARAÇÃO: Suplementares (Úteis) vs Extras (Folgas/Feriados)
         if (isHoliday || isOvertimeDay) {
             dayExtraWeekendMs = workedMs;
         } else {
@@ -234,7 +257,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
             totalValueStr, 
             ''
         ]],
-        startY: 40,
+        startY: 45,
         styles: { fontSize: 8, cellPadding: 2, valign: 'middle' },
         headStyles: { fillColor: [63, 63, 70], textColor: 255, fontStyle: 'bold', halign: 'center' },
         footStyles: { fillColor: [244, 244, 245], textColor: [24, 24, 27], fontStyle: 'bold', fontSize: 9 },
@@ -243,8 +266,8 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
             1: { halign: 'center', cellWidth: 15 },
             2: { halign: 'center', cellWidth: 15 },
             3: { cellWidth: 35 },
-            4: { halign: 'center', cellWidth: 20, textColor: [79, 70, 229] }, // Indigo para suplementares
-            5: { halign: 'center', cellWidth: 20, textColor: [220, 38, 38] }, // Rose para extras 100%
+            4: { halign: 'center', cellWidth: 20, textColor: [79, 70, 229] },
+            5: { halign: 'center', cellWidth: 20, textColor: [220, 38, 38] },
             6: { halign: 'center', cellWidth: 20, fontStyle: 'bold' },
             7: { halign: 'right', cellWidth: 35 },
             8: { cellWidth: 'auto' }
@@ -252,7 +275,8 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
         alternateRowStyles: { fillColor: [250, 251, 255] }
     });
 
-    doc.save(`relatorio_ponto_detalhado_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`relatorio_ponto_${user?.name.replace(/\s+/g, '_')}_${reportStart}_${reportEnd}.pdf`);
+    setIsReportModalOpen(false);
   };
 
   const formatTime = (isoString?: string) => {
@@ -297,11 +321,11 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
             {logs.length > 0 && (
               <>
                 <button
-                    onClick={handleExportPDF}
+                    onClick={() => setIsReportModalOpen(true)}
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/60 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-300 active:scale-95 border border-white/40 dark:border-white/10 backdrop-blur-sm group cursor-pointer shadow-sm"
-                    title="Exportar PDF Detalhado"
+                    title="Exportar PDF do Período"
                 >
-                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wide hidden sm:inline group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">PDF</span>
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wide hidden sm:inline group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">Relatório</span>
                     <FileText size={16} strokeWidth={2} />
                 </button>
 
@@ -497,6 +521,71 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
                  )}
              </div>
           )}
+        </div>
+      )}
+
+      {/* Modal de Exportação do Relatório */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-white/20 dark:border-slate-800 transition-colors animate-in zoom-in-95">
+             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <div className="flex items-center gap-3">
+                   <div className="p-2 bg-rose-50 dark:bg-rose-900/30 rounded-xl">
+                      <FileText className="text-rose-600 dark:text-rose-400" size={20} />
+                   </div>
+                   <h3 className="font-bold text-slate-800 dark:text-slate-100">Gerar Relatório PDF</h3>
+                </div>
+                <button onClick={() => setIsReportModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                  <X size={20} />
+                </button>
+             </div>
+             
+             <div className="p-6 space-y-6">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Selecione o período que deseja incluir no documento detalhado.</p>
+                
+                <div className="space-y-4">
+                  <div className="relative">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block flex items-center gap-2">
+                       <CalendarRange size={12}/> Data de Início
+                    </label>
+                    <input 
+                      type="date" 
+                      value={reportStart} 
+                      onChange={e => setReportStart(e.target.value)}
+                      className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-rose-500/20 transition-all dark:[color-scheme:dark]"
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block flex items-center gap-2">
+                       <CalendarRange size={12}/> Data de Término
+                    </label>
+                    <input 
+                      type="date" 
+                      value={reportEnd} 
+                      onChange={e => setReportEnd(e.target.value)}
+                      className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-rose-500/20 transition-all dark:[color-scheme:dark]"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex flex-col gap-3">
+                   <button 
+                    onClick={handleExportPDF}
+                    className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-rose-500/20 active:scale-95 flex items-center justify-center gap-2"
+                   >
+                     <Download size={18} />
+                     Baixar Relatório PDF
+                   </button>
+                   <button 
+                    onClick={() => setIsReportModalOpen(false)}
+                    className="w-full py-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-xs uppercase tracking-widest transition-colors"
+                   >
+                     Cancelar
+                   </button>
+                </div>
+             </div>
+          </div>
         </div>
       )}
     </div>
