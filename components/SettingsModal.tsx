@@ -154,24 +154,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         {activeTab === 'general' && (
             <form onSubmit={handleSaveGeneral} className="space-y-8 animate-in slide-in-from-left-4">
                 
-                {/* Configurações de Notificação e Ciclo */}
+                {/* Configurações de Notificação */}
                 <div className="space-y-4">
                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <CalendarDays size={12} className="text-indigo-400"/> Ciclo Mensal e Alertas
+                        <BellRing size={12} className="text-indigo-400"/> Notificações de Jornada
                     </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Aviso de Fim (Minutos)</label>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Aviso Prévio (Minutos)</label>
+                        <div className="relative">
                             <input type="number" value={formData.notificationMinutes} onChange={e => setFormData({...formData, notificationMinutes: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Início do Mês (Dia)</label>
-                            <input type="number" min="1" max="31" value={formData.periodStartDay || 1} onChange={e => setFormData({...formData, periodStartDay: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">minutos</span>
                         </div>
                     </div>
                     <div className="flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-xl">
                         <Info size={14} className="text-indigo-400 mt-0.5 shrink-0" />
-                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">O dia de início define como os registros são agrupados (ex: dia 8 até dia 7 do mês seguinte).</p>
+                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">Tempo de aviso antes do fim da jornada ou retorno do almoço.</p>
+                    </div>
+                </div>
+
+                {/* Configurações de Ciclo Mensal */}
+                <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <CalendarDays size={12} className="text-indigo-400"/> Fechamento do Mês
+                    </h4>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Dia de Início do Ciclo</label>
+                        <div className="relative">
+                            <input type="number" min="1" max="31" value={formData.periodStartDay || 1} onChange={e => setFormData({...formData, periodStartDay: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">dia</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-xl">
+                        <Info size={14} className="text-indigo-400 mt-0.5 shrink-0" />
+                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">Define como os registros são agrupados no histórico (ex: dia 8 até dia 7 do mês seguinte).</p>
                     </div>
                 </div>
 
@@ -309,6 +324,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                         <button onClick={async () => { if(confirm(`Excluir ${user.name}?`)) await deleteAppUser(user.id); fetchUsers(); }} className="p-3 text-slate-500 hover:text-rose-500 transition-all"><Trash2 size={18}/></button>
                                     </div>
                                 </div>
+                                {editingUserId === user.id && (
+                                    <form onSubmit={handleSaveEditUser} className="mt-4 pt-4 border-t border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-top-2">
+                                        <div className="space-y-3">
+                                            <input placeholder="Nome Completo" value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm" />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <input placeholder="Cargo" value={editingUser.company || ''} onChange={e => setEditingUser({...editingUser, company: e.target.value})} className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm" />
+                                                <input placeholder="PIN" maxLength={4} value={editingUser.pin || ''} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-center text-sm" />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button type="button" onClick={() => setEditingUserId(null)} className="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">Cancelar</button>
+                                            <button type="submit" disabled={isUpdatingUser || !editingUser.name} className="flex-1 py-3 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center justify-center gap-2">
+                                                {isUpdatingUser ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} Salvar
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
                             </div>
                         ))}
                     </div>

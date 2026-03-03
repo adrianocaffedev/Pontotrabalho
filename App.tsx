@@ -484,7 +484,7 @@ const App: React.FC = () => {
                                             else if (key === '←') setPinBuffer(p => p.slice(0, -1));
                                             else handlePinInput(key.toString());
                                         }}
-                                        className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xl hover:bg-indigo-600 hover:text-white active:scale-90 transition-all shadow-sm border border-slate-100/50 dark:border-slate-700/50 flex items-center justify-center cursor-pointer touch-manipulation"
+                                        className="aspect-square rounded-full bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xl hover:bg-indigo-600 hover:text-white active:scale-90 transition-all shadow-sm border border-slate-100/50 dark:border-slate-700/50 flex items-center justify-center cursor-pointer touch-manipulation"
                                     >
                                         {key === '←' ? <Delete size={20} className="mx-auto" /> : key}
                                     </button>
