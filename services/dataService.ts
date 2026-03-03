@@ -10,6 +10,7 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal } from '../types';
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS contract_start_date TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS renewals JSONB DEFAULT '[]'::JSONB;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS pin TEXT;
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS period_start_day INTEGER DEFAULT 1;
  */
 
 const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
@@ -24,6 +25,7 @@ const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
     overtimePercentage: dbSettings.overtime_percentage !== null ? Number(dbSettings.overtime_percentage) : 25,
     overtimeDays: dbSettings.overtime_days || [0, 6],
     holidays: dbSettings.holidays || [], 
+    periodStartDay: Number(dbSettings.period_start_day) || 1,
   };
 };
 
@@ -100,7 +102,8 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
       food_allowance: 0,
       currency: 'EUR',
       overtime_percentage: 25,
-      overtime_days: [0, 6]
+      overtime_days: [0, 6],
+      period_start_day: 1
     });
 
     return { user: mapUserFromDb(data), error: null };
@@ -259,6 +262,7 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
     // Fix: settings.overtime_days to settings.overtimeDays
     overtime_days: settings.overtimeDays || [], 
     holidays: settings.holidays || [], 
+    period_start_day: settings.periodStartDay || 1,
     user_id: userId
   };
   try {

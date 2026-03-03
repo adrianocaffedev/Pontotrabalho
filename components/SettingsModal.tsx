@@ -154,18 +154,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         {activeTab === 'general' && (
             <form onSubmit={handleSaveGeneral} className="space-y-8 animate-in slide-in-from-left-4">
                 
-                {/* Configurações de Notificação */}
+                {/* Configurações de Notificação e Ciclo */}
                 <div className="space-y-4">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <BellRing size={12} className="text-indigo-400"/> Notificação (Saída e Almoço)
-                    </label>
-                    <div className="relative">
-                        <input type="number" value={formData.notificationMinutes} onChange={e => setFormData({...formData, notificationMinutes: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">minutos</span>
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <CalendarDays size={12} className="text-indigo-400"/> Ciclo Mensal e Alertas
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Aviso de Fim (Minutos)</label>
+                            <input type="number" value={formData.notificationMinutes} onChange={e => setFormData({...formData, notificationMinutes: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Início do Mês (Dia)</label>
+                            <input type="number" min="1" max="31" value={formData.periodStartDay || 1} onChange={e => setFormData({...formData, periodStartDay: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
+                        </div>
                     </div>
                     <div className="flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-xl">
                         <Info size={14} className="text-indigo-400 mt-0.5 shrink-0" />
-                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">Este tempo define o aviso prévio para o fim da jornada e para o retorno do intervalo de almoço.</p>
+                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">O dia de início define como os registros são agrupados (ex: dia 8 até dia 7 do mês seguinte).</p>
                     </div>
                 </div>
 

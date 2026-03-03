@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     overtimePercentage: 25,
     overtimeDays: [0, 6],
     holidays: [],
+    periodStartDay: 1,
 };
 
 const generateId = () => {

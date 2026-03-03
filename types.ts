@@ -42,6 +42,7 @@ export interface AppSettings {
   overtimePercentage: number;
   overtimeDays: number[];
   holidays: string[];
+  periodStartDay: number;
 }
 
 export interface AnalysisResult {
