@@ -206,14 +206,24 @@ const App: React.FC = () => {
       setPinBuffer(newPin);
 
       if (newPin.length === 4) {
-          const user = selectedLoginUser || usersList.find(u => u.name.toLowerCase().trim() === searchName.toLowerCase().trim());
+          let user = selectedLoginUser || usersList.find(u => u.name.toLowerCase().trim() === searchName.toLowerCase().trim());
           
+          // Auto-identify user by PIN if no user is selected
+          if (!user && !searchName) {
+              const matchedUser = usersList.find(u => String(u.pin || '').trim() === newPin);
+              if (matchedUser) {
+                  user = matchedUser;
+                  setSearchName(matchedUser.name);
+                  setSelectedLoginUser(matchedUser);
+              }
+          }
+
           if (!user) {
               setPinError(true);
               setTimeout(() => {
                   setPinBuffer('');
                   setPinError(false);
-                  alert("Usuário não encontrado. Por favor, selecione seu nome na lista antes de digitar o PIN.");
+                  alert("Usuário não encontrado. Por favor, selecione seu nome na lista ou digite um PIN válido.");
               }, 600);
               return;
           }
