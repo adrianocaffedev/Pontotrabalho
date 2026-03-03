@@ -8,6 +8,7 @@ import SettingsModal from './components/SettingsModal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
+import { requestNotificationPermission, sendNotification } from './services/notificationService';
 import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon, LogOut, Lock, ChevronRight, Loader2, User, Key, ArrowRight, Delete, Code2 } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
@@ -90,6 +91,7 @@ const App: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+  const [notifiedEvents, setNotifiedEvents] = useState<Set<string>>(new Set());
   
   // Login State
   const [usersList, setUsersList] = useState<AppUser[]>([]);
@@ -151,7 +153,10 @@ const App: React.FC = () => {
         const savedUserId = localStorage.getItem(STORAGE_KEY_ACTIVE_USER_ID);
         if (savedUserId) {
             const foundUser = users.find(u => u.id === savedUserId);
-            if (foundUser) setActiveUser(foundUser);
+            if (foundUser) {
+                setActiveUser(foundUser);
+                requestNotificationPermission();
+            }
         }
         setIsLoadingData(false);
     };
@@ -196,18 +201,22 @@ const App: React.FC = () => {
   const handlePinInput = (val: string) => {
       if (pinBuffer.length >= 4) return;
       
-      const user = selectedLoginUser || usersList.find(u => u.name.toLowerCase().trim() === searchName.toLowerCase().trim());
-      
-      if (!user) {
-          alert("Por favor, selecione um usuário válido antes de digitar o PIN.");
-          setPinBuffer('');
-          return;
-      }
-
       const newPin = pinBuffer + val;
       setPinBuffer(newPin);
 
       if (newPin.length === 4) {
+          const user = selectedLoginUser || usersList.find(u => u.name.toLowerCase().trim() === searchName.toLowerCase().trim());
+          
+          if (!user) {
+              setPinError(true);
+              setTimeout(() => {
+                  setPinBuffer('');
+                  setPinError(false);
+                  alert("Usuário não encontrado. Por favor, selecione seu nome na lista antes de digitar o PIN.");
+              }, 600);
+              return;
+          }
+
           const storedPin = String(user.pin || '').trim();
           const enteredPin = String(newPin).trim();
           const isValid = storedPin ? enteredPin === storedPin : enteredPin === '0000';
@@ -215,6 +224,7 @@ const App: React.FC = () => {
           if (isValid) {
               setActiveUser(user);
               localStorage.setItem(STORAGE_KEY_ACTIVE_USER_ID, user.id);
+              requestNotificationPermission();
           } else {
               setPinError(true);
               setTimeout(() => {
@@ -352,6 +362,48 @@ const App: React.FC = () => {
   const workedHours = Math.floor(workedMs / 3600000);
   const workedMinutes = Math.floor((workedMs % 3600000) / 60000);
   const workedSeconds = Math.floor((workedMs % 60000) / 1000);
+
+  // Notification Logic
+  useEffect(() => {
+    if (!activeUser || !settings.notificationMinutes) return;
+
+    const checkNotifications = () => {
+      const todayStr = getLocalDateString(now);
+      const log = logs.find(l => l.date === todayStr);
+      if (!log || log.endTime) return;
+
+      // 1. Work End Notification
+      const workTargetMs = settings.dailyWorkHours * 3600000;
+      const notifyBeforeMs = settings.notificationMinutes * 60000;
+      
+      if (workedMs >= (workTargetMs - notifyBeforeMs) && !notifiedEvents.has(`work_end_${todayStr}`)) {
+        sendNotification('Fim da Jornada se Aproxima', {
+          body: `Sua jornada de ${settings.dailyWorkHours}h termina em aproximadamente ${settings.notificationMinutes} minutos.`
+        });
+        setNotifiedEvents(prev => new Set(prev).add(`work_end_${todayStr}`));
+      }
+
+      // 2. Lunch Return Notification
+      if (status === WorkStatus.ON_LUNCH) {
+        const lastBreak = log.breaks.find(b => b.type === 'LUNCH' && !b.endTime);
+        if (lastBreak) {
+          const lunchStart = new Date(lastBreak.startTime).getTime();
+          const lunchElapsedMs = now.getTime() - lunchStart;
+          const lunchTargetMs = settings.lunchDurationMinutes * 60000;
+
+          if (lunchElapsedMs >= (lunchTargetMs - notifyBeforeMs) && !notifiedEvents.has(`lunch_end_${lastBreak.id}`)) {
+            sendNotification('Retorno do Almoço', {
+              body: `Seu horário de almoço termina em aproximadamente ${settings.notificationMinutes} minutos.`
+            });
+            setNotifiedEvents(prev => new Set(prev).add(`lunch_end_${lastBreak.id}`));
+          }
+        }
+      }
+    };
+
+    checkNotifications();
+  }, [now, activeUser, settings, logs, workedMs, status, notifiedEvents]);
+
   const currencySymbol = settings.currency === 'BRL' ? 'R$' : settings.currency === 'USD' ? '$' : '€';
 
   const filteredSuggestions = usersList.filter(u => u.name.toLowerCase().includes(searchName.toLowerCase())).slice(0, 4);
@@ -368,7 +420,7 @@ const App: React.FC = () => {
                     <p className="text-slate-500 dark:text-slate-400 font-medium">Controle de jornada seguro</p>
                 </div>
 
-                <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-white dark:border-slate-800 shadow-2xl relative">
+                <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-white dark:border-slate-800 shadow-2xl relative z-10">
                     <div className="space-y-6">
                         {/* Campo de Nome com Sugestões */}
                         <div className="relative">
@@ -423,12 +475,15 @@ const App: React.FC = () => {
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, '←'].map(key => (
                                     <button 
                                         key={key} 
-                                        onClick={() => {
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
                                             if (key === 'C') setPinBuffer('');
                                             else if (key === '←') setPinBuffer(p => p.slice(0, -1));
                                             else handlePinInput(key.toString());
                                         }}
-                                        className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xl hover:bg-indigo-600 hover:text-white active:scale-90 transition-all shadow-sm border border-slate-100/50 dark:border-slate-700/50"
+                                        className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xl hover:bg-indigo-600 hover:text-white active:scale-90 transition-all shadow-sm border border-slate-100/50 dark:border-slate-700/50 flex items-center justify-center cursor-pointer touch-manipulation"
                                     >
                                         {key === '←' ? <Delete size={20} className="mx-auto" /> : key}
                                     </button>
