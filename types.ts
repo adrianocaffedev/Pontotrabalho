@@ -37,6 +37,7 @@ export interface TimeLog {
 export interface AppSettings {
   dailyWorkHours: number;
   lunchDurationMinutes: number;
+  coffeeDurationMinutes: number;
   notificationMinutes: number;
   hourlyRate: number;
   foodAllowance: number;

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Save, Calendar, Clock, PlusCircle, Edit3 } from 'lucide-react';
-import { TimeLog, Break } from '../types';
+import { TimeLog, Break, AppSettings } from '../types';
 
 interface ManualLogModalProps {
   isOpen: boolean;
@@ -9,9 +9,10 @@ interface ManualLogModalProps {
   onSave: (log: TimeLog) => void;
   initialLog: TimeLog | null; // Adicionado para edição
   existingDates: string[]; // Para validação de duplicidade
+  settings: AppSettings;
 }
 
-const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave, initialLog, existingDates }) => {
+const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave, initialLog, existingDates, settings }) => {
   // Correção de Data: Pega a data local considerando o offset do timezone, em vez de UTC
   const getLocalDate = () => {
     const d = new Date();
@@ -107,11 +108,18 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
                 return `${adjustedHours}:${adjustedMinutes}`;
             };
 
-            // Regra: 8h trabalho + 1h almoço = 9h totais
-            // Sugestão: Almoço após 4h, duração 1h. Saída após 9h.
-            setLunchStartTime(formatTime(h + 4, m));
-            setLunchEndTime(formatTime(h + 5, m));
-            setEndTime(formatTime(h + 9, m));
+            // Regra: Usar configurações dinâmicas
+            const lunchStartH = h + 4;
+            const lunchDurMin = settings.lunchDurationMinutes;
+            const dailyH = settings.dailyWorkHours;
+
+            setLunchStartTime(formatTime(lunchStartH, m));
+            
+            const lunchEndTotalMin = (lunchStartH * 60) + m + lunchDurMin;
+            setLunchEndTime(formatTime(Math.floor(lunchEndTotalMin / 60), lunchEndTotalMin % 60));
+            
+            const endTotalMin = (h * 60) + m + (dailyH * 60) + lunchDurMin;
+            setEndTime(formatTime(Math.floor(endTotalMin / 60), endTotalMin % 60));
         }
     }
   };

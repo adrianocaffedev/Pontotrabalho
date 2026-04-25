@@ -247,6 +247,57 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         {activeTab === 'general' && (
             <form onSubmit={handleSaveGeneral} className="space-y-8 animate-in slide-in-from-left-4">
                 
+                {/* Configurações de Jornada e Intervalos */}
+                <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <Clock size={12} className="text-indigo-400"/> Horários e Jornada
+                    </h4>
+                    <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Jornada Diária (Horas)</label>
+                            <div className="relative">
+                                <input 
+                                    type="number" 
+                                    step="0.5"
+                                    value={formData.dailyWorkHours || ''} 
+                                    onChange={e => setFormData({...formData, dailyWorkHours: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                                    placeholder="8"
+                                    className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">horas</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Almoço (Minutos)</label>
+                                <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        value={formData.lunchDurationMinutes || ''} 
+                                        onChange={e => setFormData({...formData, lunchDurationMinutes: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                                        placeholder="60"
+                                        className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                    />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">min</span>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Café (Minutos)</label>
+                                <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        value={formData.coffeeDurationMinutes || ''} 
+                                        onChange={e => setFormData({...formData, coffeeDurationMinutes: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                                        placeholder="15"
+                                        className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                    />
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">min</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Configurações de Notificação */}
                 <div className="space-y-4">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">

@@ -11,7 +11,10 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal } from '../types';
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS renewals JSONB DEFAULT '[]'::JSONB;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS pin TEXT;
  * 
- * -- Novas colunas para taxas
+ * -- Novas colunas para configurações de tempo e taxas
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS daily_work_hours NUMERIC DEFAULT 8;
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS lunch_duration_minutes NUMERIC DEFAULT 60;
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS coffee_duration_minutes NUMERIC DEFAULT 15;
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS social_security_rate NUMERIC DEFAULT 11;
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS irs_rate NUMERIC DEFAULT 0;
  * 
@@ -26,6 +29,7 @@ const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
   return {
     dailyWorkHours: Number(dbSettings.daily_work_hours) || 8,
     lunchDurationMinutes: Number(dbSettings.lunch_duration_minutes) || 60,
+    coffeeDurationMinutes: Number(dbSettings.coffee_duration_minutes) || 15,
     notificationMinutes: Number(dbSettings.notification_minutes) || 10,
     hourlyRate: Number(dbSettings.hourly_rate) || 0,
     foodAllowance: Number(dbSettings.food_allowance) || 0,
@@ -108,6 +112,7 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
       user_id: data.id,
       daily_work_hours: 8,
       lunch_duration_minutes: 60,
+      coffee_duration_minutes: 15,
       notification_minutes: 10,
       hourly_rate: 0,
       food_allowance: 0,
@@ -310,6 +315,7 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
   const payload = {
     daily_work_hours: settings.dailyWorkHours,
     lunch_duration_minutes: settings.lunchDurationMinutes,
+    coffee_duration_minutes: settings.coffeeDurationMinutes,
     notification_minutes: settings.notificationMinutes,
     hourly_rate: settings.hourlyRate,
     food_allowance: settings.foodAllowance,

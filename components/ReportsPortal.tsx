@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff } from 'lucide-react';
+import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff, CalendarRange } from 'lucide-react';
 import { AppSettings, AppUser, TimeLog, Absence } from '../types';
 import { supabase } from '../services/supabase';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ReportsPortalProps {
     isOpen: boolean;
@@ -59,6 +61,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
     };
 
     const fetchData = async () => {
+        if (!selectedUserId) return;
         setLoading(true);
         try {
             // Fetch logs for period
@@ -93,6 +96,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                     [selectedUserId]: {
                         dailyWorkHours: Number(settsData.daily_work_hours),
                         lunchDurationMinutes: Number(settsData.lunch_duration_minutes),
+                        coffeeDurationMinutes: Number(settsData.coffee_duration_minutes) || 15,
                         notificationMinutes: Number(settsData.notification_minutes),
                         hourlyRate: Number(settsData.hourly_rate),
                         foodAllowance: Number(settsData.food_allowance),
@@ -159,6 +163,84 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         };
     }, [logs, settingsMap, selectedUserId]);
 
+    const setPresetPeriod = (type: 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth') => {
+        const today = new Date();
+        const start = new Date();
+        const end = new Date();
+
+        switch (type) {
+            case 'today':
+                setStartDate(today.toISOString().split('T')[0]);
+                setEndDate(today.toISOString().split('T')[0]);
+                break;
+            case 'thisWeek':
+                const day = today.getDay();
+                start.setDate(today.getDate() - day);
+                setStartDate(start.toISOString().split('T')[0]);
+                setEndDate(today.toISOString().split('T')[0]);
+                break;
+            case 'thisMonth':
+                start.setDate(1);
+                setStartDate(start.toISOString().split('T')[0]);
+                setEndDate(today.toISOString().split('T')[0]);
+                break;
+            case 'lastMonth':
+                start.setMonth(today.getMonth() - 1);
+                start.setDate(1);
+                end.setDate(0);
+                setStartDate(start.toISOString().split('T')[0]);
+                setEndDate(end.toISOString().split('T')[0]);
+                break;
+        }
+    };
+
+    const handleExportPDF = () => {
+        if (logs.length === 0) { alert("Nenhum registro para exportar."); return; }
+        
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const user = users.find(u => u.id === selectedUserId);
+        const settings = settingsMap[selectedUserId];
+        const cur = settings?.currency === 'BRL' ? 'R$' : '€';
+
+        doc.setFontSize(20);
+        doc.setTextColor(79, 70, 229);
+        doc.text("Ponto Inteligente - Relatório de Atividades", 14, 20);
+        
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Colaborador: ${user?.name || 'N/A'} | Empresa: ${user?.company || 'N/A'}`, 14, 28);
+        doc.text(`Período: ${startDate.split('-').reverse().join('/')} até ${endDate.split('-').reverse().join('/')}`, 14, 33);
+        
+        const rows = logs.map(l => {
+            const duration = (Number(l.total_duration_ms) / 3600000).toFixed(1) + 'h';
+            const lunch = l.breaks?.find((b:any) => b.type === 'LUNCH');
+            const lunchStr = lunch ? `${new Date(lunch.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${lunch.end_time ? new Date(lunch.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...'}` : '---';
+            
+            return [
+                l.date.split('-').reverse().join('/'),
+                new Date(l.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+                lunchStr,
+                l.end_time ? new Date(l.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Aberto',
+                duration
+            ];
+        });
+
+        autoTable(doc, {
+            head: [['Data', 'Entrada', 'Intervalo Almoço', 'Saída', 'Total']],
+            body: rows,
+            startY: 40,
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229] },
+            styles: { fontSize: 8 }
+        });
+
+        const finalY = (doc as any).lastAutoTable.cursor.y + 10;
+        doc.text(`Total de Horas: ${reportStats?.totalHours.toFixed(1)}h`, 14, finalY);
+        doc.text(`Expectativa de Recebimento Líquido: ${cur} ${reportStats?.netTotal.toFixed(2)}`, 14, finalY + 5);
+
+        doc.save(`Relatorio_${user?.name.replace(/\s+/g, '_')}_${startDate}.pdf`);
+    };
+
     if (!isOpen) return null;
 
     const currency = settingsMap[selectedUserId]?.currency === 'BRL' ? 'R$' : '€';
@@ -184,59 +266,69 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 </div>
 
                 {/* Filters Row */}
-                <div className="px-6 py-4 bg-slate-900/30 border-b border-white/5 flex flex-wrap items-center gap-4">
-                    {isAdmin && (
-                        <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Colaborador</label>
+                <div className="px-6 py-5 bg-slate-900/30 border-b border-white/5 space-y-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                        {isAdmin && (
+                            <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Colaborador</label>
+                                <div className="relative">
+                                    <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <select 
+                                        value={selectedUserId} 
+                                        onChange={(e) => setSelectedUserId(e.target.value)}
+                                        className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none transition-all"
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-1.5 min-w-[150px]">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Data Início</label>
                             <div className="relative">
-                                <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <select 
-                                    value={selectedUserId} 
-                                    onChange={(e) => setSelectedUserId(e.target.value)}
-                                    className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none transition-all"
-                                >
-                                    <option value="">Selecione...</option>
-                                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                </select>
+                                <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input 
+                                    type="date" 
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all w-full [color-scheme:dark]"
+                                />
                             </div>
                         </div>
-                    )}
 
-                    <div className="flex flex-col gap-1.5 min-w-[150px]">
-                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Data Início</label>
-                        <div className="relative">
-                            <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input 
-                                type="date" 
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                            />
+                        <div className="flex flex-col gap-1.5 min-w-[150px]">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Data Fim</label>
+                            <div className="relative">
+                                <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input 
+                                    type="date" 
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all w-full [color-scheme:dark]"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-5">
+                            <button 
+                                onClick={fetchData}
+                                disabled={loading || !selectedUserId}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:grayscale"
+                            >
+                                {loading ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
+                                {/* <span className="hidden lg:inline">Atualizar</span> */}
+                            </button>
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 min-w-[150px]">
-                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Data Fim</label>
-                        <div className="relative">
-                            <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input 
-                                type="date" 
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex-shrink-0 pt-5">
-                        <button 
-                            onClick={fetchData}
-                            disabled={loading}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 active:scale-95"
-                        >
-                            {loading ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
-                            Atualizar
-                        </button>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em] whitespace-nowrap mr-2">Filtros Rápidos:</span>
+                        <button onClick={() => setPresetPeriod('today')} className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Hoje</button>
+                        <button onClick={() => setPresetPeriod('thisWeek')} className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Esta Semana</button>
+                        <button onClick={() => setPresetPeriod('thisMonth')} className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Atual</button>
+                        <button onClick={() => setPresetPeriod('lastMonth')} className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Passado</button>
                     </div>
                 </div>
 
@@ -401,11 +493,15 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 </div>
 
                 {/* Footer Actions */}
-                <div className="px-6 py-6 bg-slate-900 border-t border-white/5 flex items-center justify-between">
+                <div className="px-6 py-6 bg-slate-900 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 italic">
                         <Calculator size={14} className="text-indigo-400" /> Valores baseados nas taxas atuais de SS ({settingsMap[selectedUserId]?.socialSecurityRate}%) e IRS ({settingsMap[selectedUserId]?.irsRate}%)
                     </p>
-                    <button className="px-8 py-3 bg-white text-slate-950 rounded-2xl font-bold text-sm shadow-xl hover:bg-slate-100 transition-all active:scale-95 flex items-center gap-2">
+                    <button 
+                        onClick={handleExportPDF}
+                        disabled={loading || logs.length === 0}
+                        className="w-full sm:w-auto px-8 py-3 bg-white text-slate-950 rounded-2xl font-bold text-sm shadow-xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
                         <Download size={18} /> Exportar Relatório PDF
                     </button>
                 </div>

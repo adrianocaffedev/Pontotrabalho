@@ -17,6 +17,7 @@ const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
 const DEFAULT_SETTINGS: AppSettings = {
     dailyWorkHours: 8,
     lunchDurationMinutes: 60,
+    coffeeDurationMinutes: 15,
     notificationMinutes: 10,
     hourlyRate: 0,
     foodAllowance: 0,
@@ -263,6 +264,8 @@ const App: React.FC = () => {
           if (!result.success) {
               console.error("Erro Supabase:", result.error);
               alert("ERRO AO SALVAR: O banco de dados recusou a alteração.\n\nMotivo: " + result.error + "\n\nSolução: Execute o arquivo 'fix_database.sql' no seu painel do Supabase para corrigir a estrutura das tabelas.");
+          } else {
+              alert("Configurações salvas com sucesso!");
           }
       }
   };
@@ -521,14 +524,14 @@ const App: React.FC = () => {
              </div>
           </div>
 
-          <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3">
              {deferredPrompt && (
                 <button 
                   onClick={handleInstallClick} 
-                  className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
+                  className="flex items-center gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
                   title="Instalar Aplicação"
                 >
-                   <Download size={16} /> <span className="hidden lg:inline">Instalar App</span>
+                   <Download size={16} /> <span>Instalar App</span>
                 </button>
              )}
              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm">
@@ -600,6 +603,7 @@ const App: React.FC = () => {
                     onDelete={handleDeleteLog} 
                     onEdit={handleEditLog} 
                     onAddManual={() => setIsManualLogModalOpen(true)} 
+                    onOpenReports={() => setIsReportsOpen(true)}
                     currentLogId={currentLogId} 
                     standaloneAbsences={standaloneAbsences}
                 />
@@ -617,7 +621,7 @@ const App: React.FC = () => {
       <SettingsModal isOpen={isSettingsOpen} onClose={() => { setIsSettingsOpen(false); refreshUsersList(); }} settings={settings} onSave={handleSaveSettings} currentUser={activeUser} onSelectUser={setActiveUser} systemHolidays={systemHolidays} isAdmin={isGlobalAdmin} setIsAdmin={setIsGlobalAdmin} />
       <ReportsPortal isOpen={isReportsOpen} onClose={() => setIsReportsOpen(false)} currentUser={activeUser} isAdmin={isGlobalAdmin} />
       <AbsenceModal isOpen={isAbsenceModalOpen} onClose={() => setIsAbsenceModalOpen(false)} onSave={handleSaveAbsence} />
-      <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} />
+      <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} settings={settings} />
     </div>
   );
 };
