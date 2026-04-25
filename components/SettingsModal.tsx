@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Info } from 'lucide-react';
+import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Info, MessageSquare, Files } from 'lucide-react';
 import { AppSettings, AppUser, ContractRenewal } from '../types';
-import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser } from '../services/dataService';
+import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser, fetchAllJustifications } from '../services/dataService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -15,13 +15,16 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, currentUser, onSelectUser, systemHolidays = [] }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'general'>(currentUser ? 'general' : 'users');
+  const [activeTab, setActiveTab] = useState<'users' | 'general' | 'justifications'>(currentUser ? 'general' : 'users');
   const [formData, setFormData] = useState<AppSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
   
   const [usersList, setUsersList] = useState<AppUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
+
+  const [justifications, setJustifications] = useState<any[]>([]);
+  const [loadingJustifications, setLoadingJustifications] = useState(false);
   
   const [newUser, setNewUser] = useState<Partial<AppUser>>({
     name: '',
@@ -54,11 +57,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
     }
   }, [isOpen, currentUser, settings]);
 
+  useEffect(() => {
+    if (activeTab === 'justifications' && isAdmin) {
+        fetchJustifications();
+    }
+  }, [activeTab, isAdmin]);
+
   const fetchUsers = async () => {
       setLoadingUsers(true);
       const users = await getAppUsers();
       setUsersList(users);
       setLoadingUsers(false);
+  };
+
+  const fetchJustifications = async () => {
+      setLoadingJustifications(true);
+      const data = await fetchAllJustifications();
+      setJustifications(data);
+      setLoadingJustifications(false);
   };
 
   const handleCreateUser = async () => {
@@ -149,44 +165,90 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
           <button onClick={onClose} className="text-slate-400 p-2 rounded-full hover:bg-white/5 transition-colors"><X size={24} /></button>
         </div>
         
+        {/* Tab Headers */}
+        {isAdmin && (
+            <div className="flex px-8 border-b border-white/5 bg-slate-900/50">
+                <button onClick={() => setActiveTab('users')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'users' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+                    Colaboradores
+                </button>
+                <button onClick={() => setActiveTab('general')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'general' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+                    Definições
+                </button>
+                <button onClick={() => setActiveTab('justifications')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'justifications' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+                    Justificativas
+                </button>
+            </div>
+        )}
+
         <div className="overflow-y-auto px-8 pb-8 flex-1 scrollbar-hide">
+        
+        {activeTab === 'justifications' && isAdmin && (
+            <div className="space-y-6 pt-6 animate-in slide-in-from-right-4">
+                <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Histórico de Ocorrências</h4>
+                    <button onClick={fetchJustifications} className="text-indigo-400 hover:text-indigo-300 transition-all"><History size={16}/></button>
+                </div>
+                
+                {loadingJustifications ? (
+                    <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
+                ) : justifications.length === 0 ? (
+                    <div className="text-center py-10 bg-slate-800/20 rounded-3xl border border-dashed border-slate-700">
+                        <MessageSquare size={32} className="mx-auto text-slate-600 mb-3 opacity-20" />
+                        <p className="text-xs text-slate-500 font-medium tracking-tight">Nenhuma justificativa registrada ainda.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {justifications.map(just => (
+                            <div key={just.id} className="p-5 bg-slate-800/40 border border-white/5 rounded-[1.5rem] shadow-sm">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[10px] ${just.type === 'ABSENCE' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                                            {just.type === 'ABSENCE' ? 'F' : 'A'}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm text-white">{just.app_users?.name || 'Desconhecido'}</p>
+                                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{new Date(just.date).toLocaleDateString()}</p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[8px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest ${just.type === 'ABSENCE' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                                        {just.type === 'ABSENCE' ? 'Falta' : 'Atraso'}
+                                    </span>
+                                </div>
+                                <div className="bg-slate-900/40 p-3 rounded-xl border border-white/5">
+                                    <p className="text-xs text-slate-300 leading-relaxed italic">"{just.reason}"</p>
+                                </div>
+                                {just.type === 'DELAY' && just.start_time && just.end_time && (
+                                    <div className="mt-3 flex gap-4">
+                                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase">
+                                            <Clock size={10} className="text-slate-600" /> Esperado: <span className="text-slate-300">{just.start_time}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase">
+                                            <Clock size={10} className="text-slate-600" /> Chegada: <span className="text-slate-300">{just.end_time}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
         
         {activeTab === 'general' && (
             <form onSubmit={handleSaveGeneral} className="space-y-8 animate-in slide-in-from-left-4">
                 
                 {/* Configurações de Notificação */}
                 <div className="space-y-4">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <BellRing size={12} className="text-indigo-400"/> Notificações de Jornada
-                    </h4>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Aviso Prévio (Minutos)</label>
-                        <div className="relative">
-                            <input type="number" value={formData.notificationMinutes} onChange={e => setFormData({...formData, notificationMinutes: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">minutos</span>
-                        </div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <BellRing size={12} className="text-indigo-400"/> Notificação (Saída e Almoço)
+                    </label>
+                    <div className="relative">
+                        <input type="number" value={formData.notificationMinutes} onChange={e => setFormData({...formData, notificationMinutes: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">minutos</span>
                     </div>
                     <div className="flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-xl">
                         <Info size={14} className="text-indigo-400 mt-0.5 shrink-0" />
-                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">Tempo de aviso antes do fim da jornada ou retorno do almoço.</p>
-                    </div>
-                </div>
-
-                {/* Configurações de Ciclo Mensal */}
-                <div className="space-y-4">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <CalendarDays size={12} className="text-indigo-400"/> Fechamento do Mês
-                    </h4>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Dia de Início do Ciclo</label>
-                        <div className="relative">
-                            <input type="number" min="1" max="31" value={formData.periodStartDay || 1} onChange={e => setFormData({...formData, periodStartDay: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">dia</span>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-xl">
-                        <Info size={14} className="text-indigo-400 mt-0.5 shrink-0" />
-                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">Define como os registros são agrupados no histórico (ex: dia 8 até dia 7 do mês seguinte).</p>
+                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">Este tempo define o aviso prévio para o fim da jornada e para o retorno do intervalo de almoço.</p>
                     </div>
                 </div>
 
@@ -223,6 +285,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                 <Globe size={16} className="text-slate-500" />
                             </div>
                             <input type="hidden" value="EUR" />
+                        </div>
+                    </div>
+
+                    {/* Taxas de Segurança Social e IRS */}
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-2">
+                                <ShieldAlert size={12} className="text-amber-400"/> Seg. Social (%)
+                            </label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                                <input type="number" step="0.1" value={formData.socialSecurityRate} onChange={e => setFormData({...formData, socialSecurityRate: Number(e.target.value)})} className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-amber-500/20" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-2">
+                                <AlertTriangle size={12} className="text-rose-400"/> IRS (%)
+                            </label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                                <input type="number" step="0.1" value={formData.irsRate} onChange={e => setFormData({...formData, irsRate: Number(e.target.value)})} className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-rose-500/20" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -324,23 +408,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                                         <button onClick={async () => { if(confirm(`Excluir ${user.name}?`)) await deleteAppUser(user.id); fetchUsers(); }} className="p-3 text-slate-500 hover:text-rose-500 transition-all"><Trash2 size={18}/></button>
                                     </div>
                                 </div>
-                                {editingUserId === user.id && (
-                                    <form onSubmit={handleSaveEditUser} className="mt-4 pt-4 border-t border-slate-700/50 space-y-4 animate-in fade-in slide-in-from-top-2">
-                                        <div className="space-y-3">
-                                            <input placeholder="Nome Completo" value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm" />
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <input placeholder="Cargo" value={editingUser.company || ''} onChange={e => setEditingUser({...editingUser, company: e.target.value})} className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm" />
-                                                <input placeholder="PIN" maxLength={4} value={editingUser.pin || ''} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-center text-sm" />
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button type="button" onClick={() => setEditingUserId(null)} className="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">Cancelar</button>
-                                            <button type="submit" disabled={isUpdatingUser || !editingUser.name} className="flex-1 py-3 rounded-xl font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-500 transition-colors flex items-center justify-center gap-2">
-                                                {isUpdatingUser ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} Salvar
-                                            </button>
-                                        </div>
-                                    </form>
-                                )}
                             </div>
                         ))}
                     </div>

@@ -10,7 +10,15 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal } from '../types';
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS contract_start_date TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS renewals JSONB DEFAULT '[]'::JSONB;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS pin TEXT;
- * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS period_start_day INTEGER DEFAULT 1;
+ * 
+ * -- Novas colunas para taxas
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS social_security_rate NUMERIC DEFAULT 11;
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS irs_rate NUMERIC DEFAULT 0;
+ * 
+ * -- Novas colunas para justificativas (absences)
+ * ALTER TABLE absences ADD COLUMN IF NOT EXISTS date TEXT;
+ * ALTER TABLE absences ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id);
+ * ALTER TABLE absences ALTER COLUMN time_log_id DROP NOT NULL;
  */
 
 const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
@@ -24,8 +32,9 @@ const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
     currency: dbSettings.currency || 'EUR',
     overtimePercentage: dbSettings.overtime_percentage !== null ? Number(dbSettings.overtime_percentage) : 25,
     overtimeDays: dbSettings.overtime_days || [0, 6],
-    holidays: dbSettings.holidays || [], 
-    periodStartDay: Number(dbSettings.period_start_day) || 1,
+    holidays: dbSettings.holidays || [],
+    socialSecurityRate: Number(dbSettings.social_security_rate) || 0,
+    irsRate: Number(dbSettings.irs_rate) || 0,
   };
 };
 
@@ -44,10 +53,12 @@ const mapLogFromDb = (dbLog: any, dbBreaks: any[], dbAbsences: any[]): TimeLog =
     })),
     absences: dbAbsences.map(a => ({
       id: a.id,
+      date: a.date || dbLog.date, // Use log date if absence date is missing
       type: a.type,
       reason: a.reason,
       startTime: a.start_time || undefined,
-      endTime: a.end_time || undefined
+      endTime: a.end_time || undefined,
+      userId: a.user_id
     }))
   };
 };
@@ -103,7 +114,8 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
       currency: 'EUR',
       overtime_percentage: 25,
       overtime_days: [0, 6],
-      period_start_day: 1
+      social_security_rate: 11,
+      irs_rate: 0
     });
 
     return { user: mapUserFromDb(data), error: null };
@@ -162,19 +174,63 @@ export const deleteAppUser = async (id: string): Promise<{ success: boolean, err
 };
 
 export const fetchRemoteData = async (userId: string) => {
-  if (!userId) return { settings: null, logs: [], systemHolidays: [] };
+  if (!userId) return { settings: null, logs: [], systemHolidays: [], standaloneAbsences: [] };
   try {
     const { data: sData } = await supabase.from('user_settings').select('*').eq('user_id', userId).limit(1);
     const { data: lData } = await supabase.from('time_logs').select(`*, breaks (*), absences (*)`).eq('user_id', userId).order('start_time', { ascending: true });
     const { data: hData } = await supabase.from('feriados').select('data');
+    
+    // Fetch standalone absences (where time_log_id is null)
+    const { data: aData } = await supabase.from('absences').select('*').eq('user_id', userId).is('time_log_id', null);
 
     return { 
       settings: sData && sData.length > 0 ? mapSettingsFromDb(sData[0]) : null,
       logs: (lData || []).map((l: any) => mapLogFromDb(l, l.breaks || [], l.absences || [])),
-      systemHolidays: (hData || []).map((h: any) => h.data)
+      systemHolidays: (hData || []).map((h: any) => h.data),
+      standaloneAbsences: (aData || []).map((a: any) => ({
+        id: a.id,
+        date: a.date,
+        type: a.type,
+        reason: a.reason,
+        startTime: a.start_time || undefined,
+        endTime: a.end_time || undefined,
+        userId: a.user_id
+      }))
     };
   } catch (error) {
-    return { settings: null, logs: [], systemHolidays: [] };
+    return { settings: null, logs: [], systemHolidays: [], standaloneAbsences: [] };
+  }
+};
+
+export const upsertStandaloneAbsence = async (absence: Omit<import('../types').Absence, 'id'>, userId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('absences').insert([{
+      user_id: userId,
+      date: absence.date,
+      type: absence.type,
+      reason: absence.reason,
+      start_time: absence.startTime || null,
+      end_time: absence.endTime || null,
+      time_log_id: null
+    }]);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+};
+
+export const fetchAllJustifications = async (): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('absences')
+      .select(`*, app_users (name)`)
+      .order('date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error("Erro ao buscar justificativas:", err);
+    return [];
   }
 };
 
@@ -262,7 +318,8 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
     // Fix: settings.overtime_days to settings.overtimeDays
     overtime_days: settings.overtimeDays || [], 
     holidays: settings.holidays || [], 
-    period_start_day: settings.periodStartDay || 1,
+    social_security_rate: settings.socialSecurityRate,
+    irs_rate: settings.irsRate,
     user_id: userId
   };
   try {

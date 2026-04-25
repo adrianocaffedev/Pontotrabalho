@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { TimeLog, AppUser, AppSettings } from '../types';
-import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock, Edit3, Calendar, FileText, ChevronDown, ChevronUp, CalendarRange, Filter, History, CalendarDays } from 'lucide-react';
+import { TimeLog, AppUser, AppSettings, Absence } from '../types';
+import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock, Edit3, Calendar, FileText, ChevronDown, ChevronUp, CalendarRange, Filter, History, CalendarDays, MessageSquare } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 interface LogHistoryProps {
   logs: TimeLog[];
+  standaloneAbsences: Absence[];
   user?: AppUser | null;
   settings: AppSettings;
   systemHolidays: string[];
@@ -17,7 +18,7 @@ interface LogHistoryProps {
 
 const ITEMS_PER_PAGE = 3;
 
-const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHolidays, onDelete, onEdit, onAddManual, currentLogId }) => {
+const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user, settings, systemHolidays, onDelete, onEdit, onAddManual, currentLogId }) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -96,31 +97,6 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
     }
     return nightMs;
   };
-
-  const getPeriodForDate = (dateStr: string, startDay: number) => {
-    const d = new Date(dateStr + 'T12:00:00');
-    let year = d.getFullYear();
-    let month = d.getMonth();
-    const day = d.getDate();
-
-    if (day < startDay) {
-      month--;
-      if (month < 0) {
-        month = 11;
-        year--;
-      }
-    }
-
-    const startDate = new Date(year, month, startDay);
-    const endDate = new Date(year, month + 1, startDay - 1);
-
-    const formatDate = (date: Date) => {
-      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-    };
-
-    return `${formatDate(startDate)} a ${formatDate(endDate)}`;
-  };
-
 
   const handleExportPDF = () => {
     const filteredLogs = logs.filter(l => l.date >= reportStart && l.date <= reportEnd);
@@ -220,20 +196,14 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
   };
 
   const reversedLogs = [...logs].reverse();
-  const visibleLogs = reversedLogs.slice(0, visibleCount);
-
-  // Group visible logs by period
-  const groupedLogs: { [period: string]: TimeLog[] } = {};
-  visibleLogs.forEach(log => {
-    const period = getPeriodForDate(log.date, settings.periodStartDay || 1);
-    if (!groupedLogs[period]) groupedLogs[period] = [];
-    groupedLogs[period].push(log);
-  });
-
-  const periods = Object.keys(groupedLogs);
   
-  const todayStr = new Date().toISOString().split('T')[0];
-  const currentPeriodStr = getPeriodForDate(todayStr, settings.periodStartDay || 1);
+  // Combine logs and standalone absences for a unified view
+  const combinedHistory = [
+    ...logs.map(l => ({ ...l, entryType: 'log' as const })),
+    ...standaloneAbsences.map(a => ({ ...a, entryType: 'justification' as const }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const visibleHistory = combinedHistory.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
@@ -250,44 +220,75 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, user, settings, systemHol
          </div>
       </div>
 
-      <div className="space-y-8">
-        {visibleLogs.length === 0 ? (
+      <div className="space-y-4">
+        {visibleHistory.length === 0 ? (
           <div className="text-center py-24 bg-white/30 dark:bg-slate-900/30 rounded-[2.5rem] border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center">
             <div className="w-16 h-16 bg-white/50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-4 shadow-inner"><Clock size={32} className="text-slate-300 dark:text-slate-600" /></div>
             <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px]">Sem registros de jornada</p>
           </div>
         ) : (
-          periods.map((period, index) => (
-            <div key={period} className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700">
-                  {period === currentPeriodStr ? 'Período Atual' : 'Período Arquivado'} ({period})
-                </span>
-                <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800"></div>
-              </div>
-              <div className="space-y-4">
-                {groupedLogs[period].map((log) => (
-                  <div key={log.id} className={`group relative rounded-[2.5rem] p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden ${log.id === currentLogId ? 'bg-white/70 dark:bg-slate-800/70 border-indigo-200 dark:border-indigo-500/30 shadow-xl' : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5'}`}>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                      <div className="flex items-center gap-5">
-                        <div className={`p-3.5 rounded-2xl shadow-sm border transition-colors ${log.id === currentLogId ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-white/80 dark:bg-slate-800/80 text-indigo-500 dark:text-indigo-400 border-white dark:border-slate-700'}`}><Calendar size={22}/></div>
-                        <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{log.date.split('-').reverse().join('/')}</p><p className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">{new Date(log.startTime).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})} <ArrowRight size={14} className="opacity-30" />{log.endTime ? new Date(log.endTime).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : <span className="text-indigo-500 animate-pulse italic">Em Aberto</span>}</p></div>
-                      </div>
-                      <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
-                        <div className="flex flex-col items-end"><span className="font-mono font-black text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-slate-800/60 px-4 py-2 rounded-2xl text-base border border-white/60 dark:border-slate-700/50 shadow-sm">{calculateDurationStr(log.totalDurationMs)}</span><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 mr-1">Tempo Total</p></div>
-                        <div className="flex gap-2"><button onClick={() => onEdit(log)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-white transition-all shadow-sm"><Edit3 size={18}/></button><button onClick={() => { if(confirm("Excluir este registro permanentemente?")) onDelete(log.id); }} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-white transition-all shadow-sm"><Trash2 size={18}/></button></div>
-                      </div>
-                    </div>
+          visibleHistory.map((entry) => (
+            entry.entryType === 'log' ? (
+              <div key={entry.id} className={`group relative rounded-[2.5rem] p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden ${entry.id === currentLogId ? 'bg-white/70 dark:bg-slate-800/70 border-indigo-200 dark:border-indigo-500/30 shadow-xl' : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5'}`}>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                  <div className="flex items-center gap-5">
+                    <div className={`p-3.5 rounded-2xl shadow-sm border transition-colors ${entry.id === currentLogId ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-white/80 dark:bg-slate-800/80 text-indigo-500 dark:text-indigo-400 border-white dark:border-slate-700'}`}><Calendar size={22}/></div>
+                    <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{entry.date.split('-').reverse().join('/')}</p><p className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">{new Date(entry.startTime).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})} <ArrowRight size={14} className="opacity-30" />{entry.endTime ? new Date(entry.endTime).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : <span className="text-indigo-500 animate-pulse italic">Em Aberto</span>}</p></div>
                   </div>
-                ))}
+                  <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
+                    <div className="flex flex-col items-end"><span className="font-mono font-black text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-slate-800/60 px-4 py-2 rounded-2xl text-base border border-white/60 dark:border-slate-700/50 shadow-sm">{calculateDurationStr(entry.totalDurationMs)}</span><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 mr-1">Tempo Total</p></div>
+                    <div className="flex gap-2"><button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-white transition-all shadow-sm"><Edit3 size={18}/></button><button onClick={() => { if(confirm("Excluir este registro permanentemente?")) onDelete(entry.id); }} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-white transition-all shadow-sm"><Trash2 size={18}/></button></div>
+                  </div>
+                </div>
+                {entry.absences && entry.absences.length > 0 && (
+                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                      {entry.absences.map(a => (
+                         <div key={a.id} className="flex flex-col gap-2 p-3 bg-rose-500/5 rounded-2xl border border-rose-500/10">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <MessageSquare size={12} className="text-rose-400" />
+                                    <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">Justificativa: {a.type === 'ABSENCE' ? 'Falta' : a.type === 'DELAY' ? 'Atraso' : a.type}</span>
+                                </div>
+                                {a.startTime && a.endTime && <span className="text-[10px] font-mono text-slate-400 italic">{a.startTime} - {a.endTime}</span>}
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{a.reason}"</p>
+                         </div>
+                      ))}
+                   </div>
+                )}
               </div>
-            </div>
+            ) : (
+                <div key={entry.id} className="group relative rounded-[2.5rem] p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-4 backdrop-blur-md overflow-hidden bg-rose-50/30 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/20">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <div className="p-3.5 rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20"><CalendarOff size={22}/></div>
+                            <div>
+                                <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">{entry.date.split('-').reverse().join('/')}</p>
+                                <p className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+                                    {entry.type === 'ABSENCE' ? 'Falta Justificada' : 'Atraso Justificado'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className={`px-4 py-2 rounded-2xl bg-white dark:bg-slate-800 border border-rose-100 dark:border-rose-900/30 font-bold text-[10px] uppercase tracking-widest ${entry.type === 'ABSENCE' ? 'text-rose-500' : 'text-amber-500'}`}>
+                            {entry.type === 'ABSENCE' ? 'Dia Inteiro' : 'Entrada Tardia'}
+                        </div>
+                    </div>
+                    <div className="bg-white/60 dark:bg-slate-800/60 p-4 rounded-2xl border border-white dark:border-slate-700 italic">
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">"{entry.reason}"</p>
+                    </div>
+                    {entry.type === 'DELAY' && entry.startTime && entry.endTime && (
+                         <div className="flex gap-6 px-2">
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase"><Clock size={12}/> Esperado: <span className="text-slate-700 dark:text-white">{entry.startTime}</span></div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase"><Clock size={12}/> Chegada: <span className="text-slate-700 dark:text-white">{entry.endTime}</span></div>
+                         </div>
+                    )}
+                </div>
+            )
           ))
         )}
       </div>
 
-      {logs.length > visibleCount && (<button onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} className="w-full py-4 rounded-[1.8rem] bg-white/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] border border-white/60 dark:border-white/10 hover:bg-white/60 transition-all active:scale-[0.98] shadow-sm">Ver Histórico Anterior</button>)}
+      {(logs.length + standaloneAbsences.length) > visibleCount && (<button onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} className="w-full py-4 rounded-[1.8rem] bg-white/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] border border-white/60 dark:border-white/10 hover:bg-white/60 transition-all active:scale-[0.98] shadow-sm">Ver Histórico Anterior</button>)}
 
       {isReportModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-300">

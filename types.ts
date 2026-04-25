@@ -16,10 +16,12 @@ export interface Break {
 
 export interface Absence {
   id: string;
-  type: 'FULL_DAY' | 'PARTIAL';
+  date: string; // Added date to allow standalone absences
+  type: 'FULL_DAY' | 'PARTIAL' | 'DELAY' | 'ABSENCE'; 
   reason: string;
   startTime?: string;
   endTime?: string;
+  userId?: string; // To track owner for manager view
 }
 
 export interface TimeLog {
@@ -42,7 +44,8 @@ export interface AppSettings {
   overtimePercentage: number;
   overtimeDays: number[];
   holidays: string[];
-  periodStartDay: number;
+  socialSecurityRate: number;
+  irsRate: number;
 }
 
 export interface AnalysisResult {
