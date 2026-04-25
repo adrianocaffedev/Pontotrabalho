@@ -9,7 +9,7 @@ import ReportsPortal from './components/ReportsPortal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon, LogOut, Lock, ChevronRight, Loader2, User, Key, ArrowRight, Delete, Code2, Download } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon, LogOut, Lock, ChevronRight, Loader2, User, Key, ArrowRight, Delete, Code2, Download, ClipboardList, TrendingUp } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
@@ -261,7 +261,8 @@ const App: React.FC = () => {
       if (activeUser) {
           const result = await saveRemoteSettings(newSettings, activeUser.id);
           if (!result.success) {
-              alert("Erro ao salvar configurações no banco de dados: " + result.error);
+              console.error("Erro Supabase:", result.error);
+              alert("ERRO AO SALVAR: O banco de dados recusou a alteração.\n\nMotivo: " + result.error + "\n\nSolução: Execute o arquivo 'fix_database.sql' no seu painel do Supabase para corrigir a estrutura das tabelas.");
           }
       }
   };
@@ -541,8 +542,8 @@ const App: React.FC = () => {
              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all">
                 <LogOut size={16} /> <span className="hidden sm:inline">Sair</span>
              </button>
-             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 active:scale-95 transition-all" title="Relatórios"><Database size={18}/></button>
-             <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-full bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:scale-95 transition-all shadow-lg"><SettingsIcon size={18}/></button>
+             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 active:scale-95 transition-all" title="Relatórios"><TrendingUp size={18}/></button>
+             <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-full bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:scale-95 transition-all shadow-lg" title="Configurações"><SettingsIcon size={18}/></button>
           </div>
         </header>
 

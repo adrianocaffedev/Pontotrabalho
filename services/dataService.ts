@@ -315,7 +315,6 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
     food_allowance: settings.foodAllowance,
     currency: settings.currency,
     overtime_percentage: settings.overtimePercentage,
-    // Fix: settings.overtime_days to settings.overtimeDays
     overtime_days: settings.overtimeDays || [], 
     holidays: settings.holidays || [], 
     social_security_rate: settings.socialSecurityRate,
@@ -323,10 +322,36 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
     user_id: userId
   };
   try {
+    // Tenta o upsert usando user_id como alvo do conflito
     const { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'user_id' });
-    if (error) throw error;
+    
+    // Se falhar por falta de constraint única, tentamos manual
+    if (error && (error.message.includes("unique or exclusion constraint") || error.code === '42P10')) {
+        const { data: existing } = await supabase
+            .from('user_settings')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (existing) {
+            const { error: updateError } = await supabase
+                .from('user_settings')
+                .update(payload)
+                .eq('user_id', userId);
+            if (updateError) throw updateError;
+        } else {
+            const { error: insertError } = await supabase
+                .from('user_settings')
+                .insert(payload);
+            if (insertError) throw insertError;
+        }
+    } else if (error) {
+        throw error;
+    }
+    
     return { success: true };
   } catch (err: any) {
+    console.error("Erro em saveRemoteSettings:", err);
     return { success: false, error: err.message };
   }
 };
