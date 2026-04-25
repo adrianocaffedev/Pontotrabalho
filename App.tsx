@@ -212,6 +212,77 @@ const App: React.FC = () => {
     loadUserData();
   }, [activeUser]);
 
+
+  const [alarmTriggered, setAlarmTriggered] = useState(false);
+  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.5, audioContext.currentTime + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 1);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 1);
+    } catch (e) {
+      console.error("Erro ao reproduzir som:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeUser || !currentLogId || (status !== WorkStatus.ON_LUNCH && status !== WorkStatus.ON_COFFEE)) {
+        setAlarmTriggered(false);
+        return;
+    }
+
+    const checkBreakNotification = () => {
+        if (alarmTriggered) return;
+
+        const currentLog = logs.find(l => l.id === currentLogId);
+        if (!currentLog) return;
+
+        const lastBreak = currentLog.breaks[currentLog.breaks.length - 1];
+        if (!lastBreak || lastBreak.endTime) return;
+
+        const breakStartTime = new Date(lastBreak.startTime).getTime();
+        const breakDurationLimit = lastBreak.type === 'LUNCH' 
+            ? settings.lunchDurationMinutes 
+            : settings.coffeeDurationMinutes;
+        
+        const notificationTime = breakStartTime + ((breakDurationLimit - settings.notificationMinutes) * 60 * 1000);
+        
+        if (Date.now() >= notificationTime) {
+            const typeLabel = lastBreak.type === 'LUNCH' ? 'Almoço' : 'Café';
+            
+            if (Notification.permission === 'granted') {
+                new Notification(`Intervalo de ${typeLabel}`, {
+                    body: `Faltam ${settings.notificationMinutes} minutos para terminar seu intervalo.`,
+                    icon: '/favicon.ico'
+                });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+            
+            playNotificationSound();
+            setAlarmTriggered(true);
+        }
+    };
+
+    const interval = setInterval(checkBreakNotification, 30000); // Check every 30s
+    checkBreakNotification(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [status, currentLogId, logs, settings, alarmTriggered, activeUser]);
+
   const handleLogout = () => {
       setActiveUser(null);
       localStorage.removeItem(STORAGE_KEY_ACTIVE_USER_ID);
@@ -303,6 +374,9 @@ const App: React.FC = () => {
   };
 
   const handleStartWork = () => {
+    if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
     const todayStr = getLocalDateString(new Date());
     if (logs.some(l => l.date === todayStr)) {
         alert("Já existe um registro para hoje.");
@@ -537,7 +611,7 @@ const App: React.FC = () => {
              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm">
                 <Database size={14} className={dbConnected ? "text-emerald-500" : "text-rose-500"} />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    {dbConnected ? 'Online' : 'Offline'}
+                    {dbConnected ? 'Conectado' : 'Desconectado'}
                 </span>
                 <span className={`w-1.5 h-1.5 rounded-full ${dbConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
              </div>

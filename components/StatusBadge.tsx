@@ -9,7 +9,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   const config = {
     [WorkStatus.IDLE]: {
       style: 'bg-slate-100/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-      label: 'Off',
+      label: 'Inativo',
       dot: 'bg-slate-400 dark:bg-slate-500'
     },
     [WorkStatus.WORKING]: {

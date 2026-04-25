@@ -208,7 +208,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
-        doc.text(`Colaborador: ${user?.name || 'N/A'} | Empresa: ${user?.company || 'N/A'}`, 14, 28);
+        doc.text(`Colaborador: ${user?.name || 'N/D'} | Empresa: ${user?.company || 'N/D'}`, 14, 28);
         doc.text(`Período: ${startDate.split('-').reverse().join('/')} até ${endDate.split('-').reverse().join('/')}`, 14, 33);
         
         const rows = logs.map(l => {
@@ -243,7 +243,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
 
     if (!isOpen) return null;
 
-    const currency = settingsMap[selectedUserId]?.currency === 'BRL' ? 'R$' : '€';
+    const currency = settingsMap[selectedUserId]?.currency === 'BRL' ? 'R$' : 'EUR';
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 sm:p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">

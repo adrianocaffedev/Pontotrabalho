@@ -367,11 +367,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Moeda</label>
-                            <div className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white flex items-center justify-between cursor-default">
-                                <span>Euro (€)</span>
-                                <Globe size={16} className="text-slate-500" />
-                            </div>
-                            <input type="hidden" value="EUR" />
+                            <select 
+                                value={formData.currency} 
+                                onChange={e => setFormData({...formData, currency: e.target.value})}
+                                className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none transition-all cursor-pointer"
+                            >
+                                <option value="EUR">Euro (€)</option>
+                                <option value="BRL">Real (R$)</option>
+                                <option value="USD">Dólar ($)</option>
+                            </select>
                         </div>
                     </div>
 
