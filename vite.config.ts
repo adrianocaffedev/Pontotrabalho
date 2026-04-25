@@ -16,26 +16,26 @@ export default defineConfig(({ mode }) => {
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
           name: 'PontoInteligente AI',
-          short_name: 'PontoAI',
-          description: 'Sistema de controle de ponto inteligente com análise de produtividade via Gemini AI.',
-          theme_color: '#4f46e5',
-          background_color: '#f8fafc',
+          short_name: 'Ponto AI',
+          description: 'Controle de ponto inteligente com análise Gemini AI.',
+          theme_color: '#0f172a',
+          background_color: '#0f172a',
           display: 'standalone',
           orientation: 'portrait',
-          start_url: '/',
+          start_url: '.',
           icons: [
             {
-              src: 'pwa-192x192.png',
+              src: 'https://cdn-icons-png.flaticon.com/512/2838/2838779.png',
               sizes: '192x192',
               type: 'image/png'
             },
             {
-              src: 'pwa-512x512.png',
+              src: 'https://cdn-icons-png.flaticon.com/512/2838/2838779.png',
               sizes: '512x512',
               type: 'image/png'
             },
             {
-              src: 'pwa-512x512.png',
+              src: 'https://cdn-icons-png.flaticon.com/512/2838/2838779.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any maskable'

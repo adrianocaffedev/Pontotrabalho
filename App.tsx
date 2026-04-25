@@ -5,10 +5,11 @@ import Clock from './components/Clock';
 import StatusBadge from './components/StatusBadge';
 import LogHistory from './components/LogHistory';
 import SettingsModal from './components/SettingsModal';
+import ReportsPortal from './components/ReportsPortal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon, LogOut, Lock, ChevronRight, Loader2, User, Key, ArrowRight, Delete, Code2 } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon, LogOut, Lock, ChevronRight, Loader2, User, Key, ArrowRight, Delete, Code2, Download } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
@@ -86,6 +87,8 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [systemHolidays, setSystemHolidays] = useState<string[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [isAbsenceModalOpen, setIsAbsenceModalOpen] = useState(false);
   const [isManualLogModalOpen, setIsManualLogModalOpen] = useState(false);
   const [standaloneAbsences, setStandaloneAbsences] = useState<Absence[]>([]);
@@ -93,6 +96,7 @@ const App: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
   // Login State
   const [usersList, setUsersList] = useState<AppUser[]>([]);
@@ -111,6 +115,24 @@ const App: React.FC = () => {
   });
   
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+    }
+  };
 
   const refreshUsersList = useCallback(async () => {
     const users = await getAppUsers();
@@ -195,6 +217,7 @@ const App: React.FC = () => {
       setSearchName('');
       setPinBuffer('');
       setSelectedLoginUser(null);
+      setIsGlobalAdmin(false);
   };
 
   const handlePinInput = (val: string) => {
@@ -235,7 +258,12 @@ const App: React.FC = () => {
 
   const handleSaveSettings = async (newSettings: AppSettings) => {
       setSettings(newSettings);
-      if (activeUser) await saveRemoteSettings(newSettings, activeUser.id);
+      if (activeUser) {
+          const result = await saveRemoteSettings(newSettings, activeUser.id);
+          if (!result.success) {
+              alert("Erro ao salvar configurações no banco de dados: " + result.error);
+          }
+      }
   };
 
   const handleDeleteLog = async (id: string) => {
@@ -468,7 +496,7 @@ const App: React.FC = () => {
                 </div>
                 <Signature />
             </div>
-            <SettingsModal isOpen={isSettingsOpen} onClose={() => { setIsSettingsOpen(false); refreshUsersList(); }} settings={settings} onSave={handleSaveSettings} currentUser={null} onSelectUser={setActiveUser} systemHolidays={systemHolidays} />
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => { setIsSettingsOpen(false); refreshUsersList(); }} settings={settings} onSave={handleSaveSettings} currentUser={null} onSelectUser={setActiveUser} systemHolidays={systemHolidays} isAdmin={isGlobalAdmin} setIsAdmin={setIsGlobalAdmin} />
         </div>
       );
   }
@@ -493,6 +521,15 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+             {deferredPrompt && (
+                <button 
+                  onClick={handleInstallClick} 
+                  className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
+                  title="Instalar Aplicação"
+                >
+                   <Download size={16} /> <span className="hidden lg:inline">Instalar App</span>
+                </button>
+             )}
              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm">
                 <Database size={14} className={dbConnected ? "text-emerald-500" : "text-rose-500"} />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -504,6 +541,7 @@ const App: React.FC = () => {
              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all">
                 <LogOut size={16} /> <span className="hidden sm:inline">Sair</span>
              </button>
+             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 active:scale-95 transition-all" title="Relatórios"><Database size={18}/></button>
              <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-full bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:scale-95 transition-all shadow-lg"><SettingsIcon size={18}/></button>
           </div>
         </header>
@@ -575,7 +613,8 @@ const App: React.FC = () => {
         </footer>
       </div>
 
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => { setIsSettingsOpen(false); refreshUsersList(); }} settings={settings} onSave={handleSaveSettings} currentUser={activeUser} onSelectUser={setActiveUser} systemHolidays={systemHolidays} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => { setIsSettingsOpen(false); refreshUsersList(); }} settings={settings} onSave={handleSaveSettings} currentUser={activeUser} onSelectUser={setActiveUser} systemHolidays={systemHolidays} isAdmin={isGlobalAdmin} setIsAdmin={setIsGlobalAdmin} />
+      <ReportsPortal isOpen={isReportsOpen} onClose={() => setIsReportsOpen(false)} currentUser={activeUser} isAdmin={isGlobalAdmin} />
       <AbsenceModal isOpen={isAbsenceModalOpen} onClose={() => setIsAbsenceModalOpen(false)} onSave={handleSaveAbsence} />
       <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} />
     </div>

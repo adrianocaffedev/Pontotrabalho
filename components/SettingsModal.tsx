@@ -12,9 +12,21 @@ interface SettingsModalProps {
   currentUser: AppUser | null;
   onSelectUser: (user: AppUser | null) => void;
   systemHolidays?: string[];
+  isAdmin: boolean;
+  setIsAdmin: (val: boolean) => void;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onSave, currentUser, onSelectUser, systemHolidays = [] }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    settings, 
+    onSave, 
+    currentUser, 
+    onSelectUser, 
+    systemHolidays = [],
+    isAdmin,
+    setIsAdmin
+}) => {
   const [activeTab, setActiveTab] = useState<'users' | 'general' | 'justifications'>(currentUser ? 'general' : 'users');
   const [formData, setFormData] = useState<AppSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
@@ -39,7 +51,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
   const [editingUser, setEditingUser] = useState<Partial<AppUser>>({});
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
 
-  const [isAdmin, setIsAdmin] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -49,7 +60,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
         setFormData(settings);
         if (!currentUser) {
             setActiveTab('users');
-            setIsAdmin(false);
         } else {
             setActiveTab('general');
         }
@@ -243,7 +253,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                         <BellRing size={12} className="text-indigo-400"/> Notificação (Saída e Almoço)
                     </label>
                     <div className="relative">
-                        <input type="number" value={formData.notificationMinutes} onChange={e => setFormData({...formData, notificationMinutes: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" />
+                        <input 
+                            type="number" 
+                            value={formData.notificationMinutes || ''} 
+                            onChange={e => setFormData({...formData, notificationMinutes: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                            placeholder="0"
+                            className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" 
+                        />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">minutos</span>
                     </div>
                     <div className="flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-xl">
@@ -262,12 +278,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Valor Hora</label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">€</span>
-                                <input type="number" step="0.01" value={formData.hourlyRate} onChange={e => setFormData({...formData, hourlyRate: Number(e.target.value)})} className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={formData.hourlyRate || ''} 
+                                    onChange={e => setFormData({...formData, hourlyRate: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                                    placeholder="0.00"
+                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Subsídio Almoço (Dia)</label>
-                            <input type="number" step="0.01" value={formData.foodAllowance} onChange={e => setFormData({...formData, foodAllowance: Number(e.target.value)})} className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                value={formData.foodAllowance || ''} 
+                                onChange={e => setFormData({...formData, foodAllowance: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                                placeholder="0.00"
+                                className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                            />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -275,7 +305,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Extra (%) em dia útil</label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
-                                <input type="number" value={formData.overtimePercentage} onChange={e => setFormData({...formData, overtimePercentage: Number(e.target.value)})} className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                                <input 
+                                    type="number" 
+                                    value={formData.overtimePercentage || ''} 
+                                    onChange={e => setFormData({...formData, overtimePercentage: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                                    placeholder="0"
+                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                />
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -296,7 +332,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                             </label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
-                                <input type="number" step="0.1" value={formData.socialSecurityRate} onChange={e => setFormData({...formData, socialSecurityRate: Number(e.target.value)})} className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-amber-500/20" />
+                                <input 
+                                    type="number" 
+                                    step="0.1" 
+                                    value={formData.socialSecurityRate || ''} 
+                                    onChange={e => setFormData({...formData, socialSecurityRate: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                                    placeholder="0.0"
+                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-amber-500/20" 
+                                />
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -305,7 +348,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
                             </label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
-                                <input type="number" step="0.1" value={formData.irsRate} onChange={e => setFormData({...formData, irsRate: Number(e.target.value)})} className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-rose-500/20" />
+                                <input 
+                                    type="number" 
+                                    step="0.1" 
+                                    value={formData.irsRate || ''} 
+                                    onChange={e => setFormData({...formData, irsRate: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                                    placeholder="0.0"
+                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-rose-500/20" 
+                                />
                             </div>
                         </div>
                     </div>
