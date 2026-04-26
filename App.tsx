@@ -553,18 +553,20 @@ const App: React.FC = () => {
                                 ))}
                             </div>
 
-                            <div className="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, '←'].map(key => (
+                            <div className="grid grid-cols-3 gap-6 max-w-[280px] mx-auto">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, '←'].map((key, idx) => (
                                     <button 
-                                        key={key} 
+                                        key={idx} 
                                         onClick={() => {
                                             if (key === 'C') setPinBuffer('');
                                             else if (key === '←') setPinBuffer(p => p.slice(0, -1));
                                             else handlePinInput(key.toString());
                                         }}
-                                        className="h-16 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xl hover:bg-indigo-600 hover:text-white active:scale-90 transition-all shadow-sm border border-slate-100/50 dark:border-slate-700/50"
+                                        className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl transition-all shadow-sm border
+                                            ${key === '' ? 'opacity-0 pointer-events-none' : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white border-slate-100/50 dark:border-slate-700/50 hover:bg-indigo-600 hover:text-white active:scale-90 hover:shadow-indigo-500/20'}
+                                        `}
                                     >
-                                        {key === '←' ? <Delete size={20} className="mx-auto" /> : key}
+                                        {key === '←' ? <Delete size={20} /> : key}
                                     </button>
                                 ))}
                             </div>

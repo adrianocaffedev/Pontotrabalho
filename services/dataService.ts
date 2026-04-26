@@ -111,7 +111,13 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
       .select()
       .single();
 
-    if (error) return { user: null, error: error.message };
+    if (error) {
+        let errorMsg = error.message;
+        if (error.message.includes("column") || error.message.includes("not found")) {
+            errorMsg = "ERRO DE SCHEMA: A coluna 'is_admin' ou outras colunas novas não foram encontradas no Supabase.\n\n1. Verifique se executou o SQL de migração.\n2. Se já executou, vá em 'API Settings' -> 'PostgRest' e clique em 'Reload Schema' para atualizar o cache do banco.";
+        }
+        return { user: null, error: errorMsg };
+    }
     
     await supabase.from('user_settings').insert({
       user_id: data.id,
@@ -156,8 +162,8 @@ export const updateAppUser = async (id: string, userData: Partial<AppUser>): Pro
 
     if (error) {
         let errorMsg = error.message;
-        if (error.message.includes("column") && error.message.includes("not found")) {
-            errorMsg = "ERRO DE SCHEMA: Você esqueceu de criar as colunas no Supabase. Execute o SQL de migração no painel do Supabase.";
+        if (error.message.includes("column") || error.message.includes("not found")) {
+            errorMsg = "ERRO DE SCHEMA: A coluna 'is_admin' ou outras colunas novas não foram encontradas no Supabase.\n\n1. Verifique se executou o SQL de migração.\n2. Se já executou, vá em 'API Settings' -> 'PostgRest' e clique em 'Reload Schema' para atualizar o cache do banco.";
         }
         return { success: false, error: errorMsg };
     }
