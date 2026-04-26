@@ -41,7 +41,8 @@ export interface AppSettings {
   notificationMinutes: number;
   hourlyRate: number;
   foodAllowance: number;
-  currency: string;
+  currency: 'EUR' | 'BRL' | 'USD';
+  language: 'pt-BR' | 'pt-PT' | 'en';
   overtimePercentage: number;
   overtimeDays: number[];
   holidays: string[];

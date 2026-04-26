@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Info, MessageSquare, Files } from 'lucide-react';
 import { AppSettings, AppUser, ContractRenewal } from '../types';
 import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser, fetchAllJustifications } from '../services/dataService';
+import { getTranslation, TranslationKey } from '../services/translations';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'general' | 'justifications'>(currentUser ? 'general' : 'users');
   const [formData, setFormData] = useState<AppSettings>(settings);
+  const t = (key: TranslationKey) => getTranslation(settings.language || 'pt-PT', key);
   const [isSaving, setIsSaving] = useState(false);
   
   const [usersList, setUsersList] = useState<AppUser[]>([]);
@@ -164,7 +166,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in text-left">
-      <div className="bg-[#111827] dark:bg-[#0f172a] rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col border border-white/10 relative transition-colors">
+      <div className="bg-[#111827] dark:bg-[#0f172a] rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col border border-white/10 relative transition-colors">
         
         {/* Modal Header */}
         <div className="flex items-center justify-between px-8 py-6 shrink-0">
@@ -172,20 +174,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <SettingsIcon size={18} className="text-indigo-400"/>
               <h3 className="text-base font-bold text-white tracking-tight">Configurações Globais</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 p-2 rounded-full hover:bg-white/5 transition-colors"><X size={24} /></button>
+          <button onClick={onClose} className="text-slate-400 p-2 rounded-xl hover:bg-white/5 transition-colors"><X size={24} /></button>
         </div>
         
         {/* Tab Headers */}
         {isAdmin && (
             <div className="flex px-8 border-b border-white/5 bg-slate-900/50">
                 <button onClick={() => setActiveTab('users')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'users' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
-                    Colaboradores
+                    {t('settings_users')}
                 </button>
                 <button onClick={() => setActiveTab('general')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'general' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
-                    Definições
+                    {t('settings_general')}
                 </button>
                 <button onClick={() => setActiveTab('justifications')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'justifications' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
-                    Justificativas
+                    {t('settings_justifications')}
                 </button>
             </div>
         )}
@@ -202,14 +204,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 {loadingJustifications ? (
                     <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
                 ) : justifications.length === 0 ? (
-                    <div className="text-center py-10 bg-slate-800/20 rounded-3xl border border-dashed border-slate-700">
+                    <div className="text-center py-10 bg-slate-800/20 rounded-2xl border border-dashed border-slate-700">
                         <MessageSquare size={32} className="mx-auto text-slate-600 mb-3 opacity-20" />
                         <p className="text-xs text-slate-500 font-medium tracking-tight">Nenhuma justificativa registrada ainda.</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {justifications.map(just => (
-                            <div key={just.id} className="p-5 bg-slate-800/40 border border-white/5 rounded-[1.5rem] shadow-sm">
+                            <div key={just.id} className="p-5 bg-slate-800/40 border border-white/5 rounded-xl shadow-sm">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-[10px] ${just.type === 'ABSENCE' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400'}`}>
@@ -220,7 +222,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{new Date(just.date).toLocaleDateString()}</p>
                                         </div>
                                     </div>
-                                    <span className={`text-[8px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest ${just.type === 'ABSENCE' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                                    <span className={`text-[8px] font-extrabold px-2 py-0.5 rounded-lg uppercase tracking-widest ${just.type === 'ABSENCE' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'}`}>
                                         {just.type === 'ABSENCE' ? 'Falta' : 'Atraso'}
                                     </span>
                                 </div>
@@ -262,7 +264,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                     value={formData.dailyWorkHours || ''} 
                                     onChange={e => setFormData({...formData, dailyWorkHours: e.target.value === '' ? 0 : Number(e.target.value)})} 
                                     placeholder="8"
-                                    className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                    className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
                                 />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">horas</span>
                             </div>
@@ -276,7 +278,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         value={formData.lunchDurationMinutes || ''} 
                                         onChange={e => setFormData({...formData, lunchDurationMinutes: e.target.value === '' ? 0 : Number(e.target.value)})} 
                                         placeholder="60"
-                                        className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                        className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
                                     />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">min</span>
                                 </div>
@@ -289,7 +291,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         value={formData.coffeeDurationMinutes || ''} 
                                         onChange={e => setFormData({...formData, coffeeDurationMinutes: e.target.value === '' ? 0 : Number(e.target.value)})} 
                                         placeholder="15"
-                                        className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                        className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
                                     />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">min</span>
                                 </div>
@@ -309,7 +311,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             value={formData.notificationMinutes || ''} 
                             onChange={e => setFormData({...formData, notificationMinutes: e.target.value === '' ? 0 : Number(e.target.value)})} 
                             placeholder="0"
-                            className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" 
+                            className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-lg" 
                         />
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs uppercase">minutos</span>
                     </div>
@@ -335,7 +337,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                     value={formData.hourlyRate || ''} 
                                     onChange={e => setFormData({...formData, hourlyRate: e.target.value === '' ? 0 : Number(e.target.value)})} 
                                     placeholder="0.00"
-                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
                                 />
                             </div>
                         </div>
@@ -347,7 +349,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 value={formData.foodAllowance || ''} 
                                 onChange={e => setFormData({...formData, foodAllowance: e.target.value === '' ? 0 : Number(e.target.value)})} 
                                 placeholder="0.00"
-                                className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
                             />
                         </div>
                     </div>
@@ -361,7 +363,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                     value={formData.overtimePercentage || ''} 
                                     onChange={e => setFormData({...formData, overtimePercentage: e.target.value === '' ? 0 : Number(e.target.value)})} 
                                     placeholder="0"
-                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
+                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20" 
                                 />
                             </div>
                         </div>
@@ -369,13 +371,43 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             <label className="text-[10px] font-bold text-slate-400 uppercase">Moeda</label>
                             <select 
                                 value={formData.currency} 
-                                onChange={e => setFormData({...formData, currency: e.target.value})}
-                                className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none transition-all cursor-pointer"
+                                onChange={e => setFormData({...formData, currency: e.target.value as any})}
+                                className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none transition-all cursor-pointer"
                             >
                                 <option value="EUR">Euro (€)</option>
                                 <option value="BRL">Real (R$)</option>
                                 <option value="USD">Dólar ($)</option>
                             </select>
+                        </div>
+                    </div>
+
+                    {/* Novo seletor de Idioma */}
+                    <div className="space-y-2 pt-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-2">
+                            <Globe size={12} className="text-indigo-400"/> Idioma da Interface
+                        </label>
+                        <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+                            <button 
+                                type="button"
+                                onClick={() => setFormData({...formData, language: 'pt-BR'})}
+                                className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${formData.language === 'pt-BR' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                                PT-BR
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => setFormData({...formData, language: 'pt-PT'})}
+                                className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${formData.language === 'pt-PT' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                                PT-PT
+                            </button>
+                            <button 
+                                type="button"
+                                onClick={() => setFormData({...formData, language: 'en'})}
+                                className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${formData.language === 'en' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                                ENGLISH
+                            </button>
                         </div>
                     </div>
 
@@ -393,7 +425,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                     value={formData.socialSecurityRate || ''} 
                                     onChange={e => setFormData({...formData, socialSecurityRate: e.target.value === '' ? 0 : Number(e.target.value)})} 
                                     placeholder="0.0"
-                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-amber-500/20" 
+                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-amber-500/20" 
                                 />
                             </div>
                         </div>
@@ -409,7 +441,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                     value={formData.irsRate || ''} 
                                     onChange={e => setFormData({...formData, irsRate: e.target.value === '' ? 0 : Number(e.target.value)})} 
                                     placeholder="0.0"
-                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-rose-500/20" 
+                                    className="w-full p-4 pl-8 bg-slate-800/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-rose-500/20" 
                                 />
                             </div>
                         </div>
@@ -441,17 +473,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 {/* Botão Salvar Estilo Mockup */}
-                <button type="submit" disabled={isSaving} className="w-full py-5 bg-[#5b56e6] hover:bg-[#4f49d6] text-white rounded-[1.8rem] font-bold shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 relative overflow-hidden group mt-4">
+                <button type="submit" disabled={isSaving} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 relative overflow-hidden group mt-6 cursor-pointer">
                     <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    {isSaving ? <Loader2 className="animate-spin" size={24}/> : <Save size={24}/>}
-                    <span className="text-lg">Salvar Todas as Configurações</span>
+                    {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={20}/>}
+                    <span className="text-base">{t('settings_save_btn')}</span>
                 </button>
             </form>
         )}
 
         {activeTab === 'users' && (!isAdmin ? (
             <div className="flex flex-col items-center justify-center py-10 animate-in fade-in duration-500">
-                <div className="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center mb-6 shadow-inner border border-white/5">
+                <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-white/5">
                     <ShieldCheck className="text-indigo-400" size={36} />
                 </div>
                 <h3 className="font-bold text-white mb-2 text-center text-lg">Área do Administrador</h3>
@@ -463,14 +495,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             value={adminPassword} 
                             onChange={e => setAdminPassword(e.target.value)} 
                             placeholder="PIN Administrativo" 
-                            className="w-full p-5 pl-14 border border-slate-700 rounded-[1.5rem] bg-slate-800/50 text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center tracking-[0.5em] font-bold text-xl" 
+                            className="w-full p-5 pl-14 border border-slate-700 rounded-xl bg-slate-800/50 text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center tracking-[0.5em] font-bold text-xl" 
                             autoFocus
                         />
                         <Key className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500" size={24} />
                     </div>
                     {authError && <p className="text-[10px] text-rose-500 font-bold text-center uppercase tracking-wider animate-shake">{authError}</p>}
-                    <button type="submit" disabled={isVerifying} className="w-full bg-white text-[#111827] py-5 rounded-[1.5rem] font-bold active:scale-95 transition-all shadow-xl flex items-center justify-center text-lg">
-                        {isVerifying ? <Loader2 className="animate-spin"/> : 'Desbloquear Acesso'}
+                    <button type="submit" disabled={isVerifying} className="w-full bg-white text-slate-950 py-4 rounded-xl font-bold active:scale-95 transition-all shadow-lg flex items-center justify-center text-base hover:bg-slate-100 cursor-pointer">
+                        {isVerifying ? <Loader2 className="animate-spin" size={20}/> : 'Desbloquear Acesso'}
                     </button>
                     {currentUser && (
                         <button type="button" onClick={() => setActiveTab('general')} className="w-full text-slate-500 text-[10px] font-bold uppercase tracking-widest pt-4 hover:text-slate-300">Voltar para Minhas Configurações</button>
@@ -479,17 +511,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
         ) : (
             <div className="space-y-8 animate-in slide-in-from-right-4">
-                <div className="bg-slate-800/20 p-6 rounded-[2rem] border border-dashed border-slate-700">
+                <div className="bg-slate-800/20 p-6 rounded-2xl border border-dashed border-slate-700">
                     <h4 className="text-sm font-bold mb-4 flex items-center gap-2 text-white"><UserPlus size={18} className="text-indigo-400"/> Novo Funcionário</h4>
                     <div className="space-y-4">
-                        <input placeholder="Nome Completo" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        <input placeholder="Nome Completo" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         <div className="grid grid-cols-2 gap-3">
-                            <input placeholder="Cargo" value={newUser.company} onChange={e => setNewUser({...newUser, company: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
-                            <input placeholder="PIN" maxLength={4} value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-center" />
+                            <input placeholder="Cargo" value={newUser.company} onChange={e => setNewUser({...newUser, company: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                            <input placeholder="PIN" maxLength={4} value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-center" />
                         </div>
                         <div className="flex flex-col gap-2">
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Regime Contratual</label>
-                            <div className="flex bg-slate-800 p-1 rounded-2xl border border-slate-700">
+                            <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
                                 <button 
                                     onClick={() => setNewUser({...newUser, contractType: 'EFFECTIVE'})}
                                     className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${newUser.contractType === 'EFFECTIVE' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500'}`}
@@ -504,7 +536,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 </button>
                             </div>
                         </div>
-                        <button onClick={handleCreateUser} disabled={creatingUser || !newUser.name} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg">
+                        <button onClick={handleCreateUser} disabled={creatingUser || !newUser.name} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg">
                             {creatingUser ? <Loader2 className="animate-spin" size={18}/> : <Plus size={18}/>} Criar Cadastro
                         </button>
                     </div>
@@ -514,7 +546,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Lista de Colaboradores ({usersList.length})</h4>
                     <div className="space-y-3">
                         {usersList.map(user => (
-                            <div key={user.id} className="p-5 bg-slate-800/40 border border-white/5 rounded-[1.5rem] shadow-sm transition-all hover:bg-slate-800/60">
+                            <div key={user.id} className="p-5 bg-slate-800/40 border border-white/5 rounded-xl shadow-sm transition-all hover:bg-slate-800/60">
                                 {editingUserId === user.id ? (
                                     <form onSubmit={handleSaveEditUser} className="space-y-4">
                                         <input 
@@ -572,7 +604,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 <div className="flex items-center gap-2">
                                                     <p className="font-bold text-white">{user.name}</p>
                                                     {user.contractType === 'TEMPORARY' && (
-                                                        <span className="text-[7px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">TEMP</span>
+                                                        <span className="text-[7px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded-lg font-black uppercase tracking-tighter">TEMP</span>
                                                     )}
                                                 </div>
                                                 <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{user.company || 'Geral'}</p>

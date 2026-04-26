@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WorkStatus, TimeLog, Break, AppSettings, Absence, AppUser } from './types';
 import Clock from './components/Clock';
+import { getTranslation, Language, TranslationKey } from './services/translations';
 import StatusBadge from './components/StatusBadge';
 import LogHistory from './components/LogHistory';
 import SettingsModal from './components/SettingsModal';
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: AppSettings = {
     hourlyRate: 0,
     foodAllowance: 0,
     currency: 'EUR',
+    language: 'pt-PT',
     overtimePercentage: 25,
     overtimeDays: [0, 6],
     holidays: [],
@@ -39,7 +41,7 @@ const generateId = () => {
 
 const Signature = () => (
     <div className="flex justify-center mt-8 animate-in fade-in slide-in-from-bottom-2 duration-1000 delay-500">
-        <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900/50 group cursor-default">
+        <div className="inline-flex items-center gap-3 px-5 py-2 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900/50 group cursor-default">
             <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-tighter text-sm">{"</>"}</span>
             <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-[0.2em]">Por Adriano Caffé</span>
         </div>
@@ -48,7 +50,7 @@ const Signature = () => (
 
 const StatCard = ({ icon: Icon, label, value, subValue, active, colorClass, delay }: any) => (
     <div 
-        className={`relative overflow-hidden p-4 sm:p-6 rounded-3xl border backdrop-blur-xl transition-all duration-500 group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards
+        className={`relative overflow-hidden p-4 sm:p-6 rounded-xl border backdrop-blur-xl transition-all duration-500 group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards
         ${active 
             ? 'bg-white/80 dark:bg-slate-800/60 border-indigo-200 dark:border-indigo-500/30 shadow-lg shadow-indigo-500/10' 
             : 'bg-white/30 dark:bg-slate-900/30 border-white/40 dark:border-white/5 hover:bg-white/50 dark:hover:bg-slate-800/40 hover:border-white/60 dark:hover:border-slate-700 hover:-translate-y-1 hover:shadow-lg'}
@@ -82,6 +84,7 @@ const StatCard = ({ icon: Icon, label, value, subValue, active, colorClass, dela
 const App: React.FC = () => {
   const [activeUser, setActiveUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<WorkStatus>(WorkStatus.IDLE);
+  
   const [logs, setLogs] = useState<TimeLog[]>([]);
   const [currentLogId, setCurrentLogId] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
@@ -479,6 +482,8 @@ const App: React.FC = () => {
   const workedSeconds = Math.floor((workedMs % 60000) / 1000);
   const currencySymbol = settings.currency === 'BRL' ? 'R$' : settings.currency === 'USD' ? '$' : '€';
 
+  const t = (key: TranslationKey) => getTranslation(settings.language || 'pt-PT', key);
+
   const filteredSuggestions = usersList.filter(u => u.name.toLowerCase().includes(searchName.toLowerCase())).slice(0, 4);
 
   if (!activeUser && !isLoadingData) {
@@ -486,14 +491,14 @@ const App: React.FC = () => {
         <div className={`min-h-screen flex flex-col items-center justify-center p-6 transition-colors duration-500 ${theme === 'dark' ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
             <div className="max-w-lg w-full animate-in zoom-in-95 duration-500">
                 <div className="text-center mb-10">
-                    <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/20 rotate-3">
+                    <div className="w-20 h-20 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/20 rotate-3">
                         <ClockIcon size={40} className="text-white" />
                     </div>
                     <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight mb-2">Ponto<span className="text-indigo-600">Inteligente</span></h1>
                     <p className="text-slate-500 dark:text-slate-400 font-medium">Controle de jornada seguro</p>
                 </div>
 
-                <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-white dark:border-slate-800 shadow-2xl relative">
+                <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl p-8 rounded-2xl border border-white dark:border-slate-800 shadow-2xl relative">
                     <div className="space-y-6">
                         {/* Campo de Nome com Sugestões */}
                         <div className="relative">
@@ -508,18 +513,18 @@ const App: React.FC = () => {
                                     onChange={e => { setSearchName(e.target.value); setShowSuggestions(true); setSelectedLoginUser(null); }}
                                     onFocus={() => setShowSuggestions(true)}
                                     placeholder="Comece a digitar seu nome..."
-                                    className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold dark:text-white outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-all text-lg"
+                                    className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-all text-lg"
                                 />
                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={20} />
                                 {showSuggestions && searchName && filteredSuggestions.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                                         {filteredSuggestions.map(user => (
                                             <button 
                                                 key={user.id} 
                                                 onClick={() => { setSearchName(user.name); setSelectedLoginUser(user); setShowSuggestions(false); setPinBuffer(''); }}
                                                 className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700 border-b last:border-0 border-slate-100 dark:border-slate-700 transition-colors"
                                             >
-                                                <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center font-bold text-[10px] uppercase">{user.name.substring(0,2)}</div>
+                                                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center font-bold text-[10px] uppercase">{user.name.substring(0,2)}</div>
                                                 <div className="text-left flex-1">
                                                     <p className="font-bold text-slate-800 dark:text-white text-sm leading-tight">{user.name}</p>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase">{user.company}</p>
@@ -553,7 +558,7 @@ const App: React.FC = () => {
                                             else if (key === '←') setPinBuffer(p => p.slice(0, -1));
                                             else handlePinInput(key.toString());
                                         }}
-                                        className="h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xl hover:bg-indigo-600 hover:text-white active:scale-90 transition-all shadow-sm border border-slate-100/50 dark:border-slate-700/50"
+                                        className="h-16 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xl hover:bg-indigo-600 hover:text-white active:scale-90 transition-all shadow-sm border border-slate-100/50 dark:border-slate-700/50"
                                     >
                                         {key === '←' ? <Delete size={20} className="mx-auto" /> : key}
                                     </button>
@@ -565,7 +570,7 @@ const App: React.FC = () => {
                     <div className="mt-8 pt-6 border-t dark:border-slate-800 flex justify-center">
                         <button 
                             onClick={() => setIsSettingsOpen(true)} 
-                            className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-500 hover:text-white transition-all shadow-sm active:scale-90"
+                            className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-500 hover:text-white transition-all shadow-sm active:scale-90"
                             title="Configurações Admin"
                         >
                             <SettingsIcon size={20} />
@@ -589,7 +594,7 @@ const App: React.FC = () => {
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col min-h-screen">
         <header className="flex flex-col sm:flex-row justify-between items-center mb-8 sm:mb-12 gap-6">
           <div className="flex items-center gap-3">
-             <div className="bg-white dark:bg-slate-800 p-2 sm:p-3 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700">
+             <div className="bg-white dark:bg-slate-800 p-2 sm:p-3 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700">
                 <ClockIcon size={24} className="text-indigo-600 dark:text-indigo-400" />
              </div>
              <div>
@@ -602,25 +607,25 @@ const App: React.FC = () => {
              {deferredPrompt && (
                 <button 
                   onClick={handleInstallClick} 
-                  className="flex items-center gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
+                  className="flex items-center gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
                   title="Instalar Aplicação"
                 >
                    <Download size={16} /> <span>Instalar App</span>
                 </button>
              )}
-             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm">
+             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm">
                 <Database size={14} className={dbConnected ? "text-emerald-500" : "text-rose-500"} />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     {dbConnected ? 'Conectado' : 'Desconectado'}
                 </span>
                 <span className={`w-1.5 h-1.5 rounded-full ${dbConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
              </div>
-             <button onClick={toggleTheme} className="p-2 sm:p-3 rounded-full bg-white/40 dark:bg-white/5 hover:bg-white/80 transition-all text-slate-600 dark:text-slate-400"><Sun size={18}/></button>
-             <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all">
+             <button onClick={toggleTheme} className="p-2 sm:p-3 rounded-xl bg-white/40 dark:bg-white/5 hover:bg-white/80 transition-all text-slate-600 dark:text-slate-400"><Sun size={18}/></button>
+             <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all">
                 <LogOut size={16} /> <span className="hidden sm:inline">Sair</span>
              </button>
-             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 active:scale-95 transition-all" title="Relatórios"><TrendingUp size={18}/></button>
-             <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-full bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:scale-95 transition-all shadow-lg" title="Configurações"><SettingsIcon size={18}/></button>
+             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 active:scale-95 transition-all" title="Relatórios"><TrendingUp size={18}/></button>
+             <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-xl bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:scale-95 transition-all shadow-lg" title="Configurações"><SettingsIcon size={18}/></button>
           </div>
         </header>
 
@@ -629,44 +634,52 @@ const App: React.FC = () => {
         ) : (
             <main className="flex-1 space-y-8 animate-in fade-in duration-700">
                 <div className="flex flex-col items-center relative">
-                    <div className="absolute top-0 right-0"><StatusBadge status={status} /></div>
+                    <div className="absolute top-0 right-0">
+                        <StatusBadge status={status} label={
+                            status === WorkStatus.WORKING ? t('status_working') :
+                            status === WorkStatus.ON_LUNCH ? t('status_lunch') :
+                            status === WorkStatus.ON_COFFEE ? t('status_coffee') :
+                            status === WorkStatus.FINISHED ? t('status_finished') :
+                            t('status_idle')
+                        } />
+                    </div>
                     <Clock />
                     <div className="mt-8 flex items-center gap-6">
                         {status === WorkStatus.IDLE || status === WorkStatus.FINISHED ? (
                             <div className="flex flex-col items-center gap-6">
-                                <button onClick={handleStartWork} className="w-24 h-24 rounded-full bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all relative group">
-                                    <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                <button onClick={handleStartWork} className="w-24 h-24 rounded-xl bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all relative group">
+                                    <div className="absolute inset-0 bg-white/20 rounded-xl animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
                                     <Play size={32} className="ml-1 fill-current" />
                                 </button>
                                 <button 
                                     onClick={() => setIsAbsenceModalOpen(true)} 
-                                    className="px-6 py-3 rounded-2xl bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 transition-all font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm"
+                                    className="px-6 py-3 rounded-xl bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 transition-all font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm"
                                 >
-                                    <CalendarOff size={14} className="text-rose-500" /> Registrar Justificativa / Falta
+                                    <CalendarOff size={14} className="text-rose-500" /> {t('settings_justifications')}
                                 </button>
                             </div>
                         ) : (
                             <div className="flex gap-4 items-center">
                                 {status === WorkStatus.WORKING && (
                                     <>
-                                        <button onClick={() => handleStartBreak('LUNCH')} className="w-14 h-14 rounded-full bg-amber-100 text-amber-600 border-2 border-amber-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all"><Utensils size={20}/></button>
-                                        <button onClick={() => handleStartBreak('COFFEE')} className="w-14 h-14 rounded-full bg-teal-100 text-teal-600 border-2 border-teal-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all"><Coffee size={20}/></button>
+                                        <button onClick={() => handleStartBreak('LUNCH')} className="w-14 h-14 rounded-xl bg-amber-100 text-amber-600 border-2 border-amber-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all" title={t('btn_lunch')}><Utensils size={20}/></button>
+                                        <button onClick={() => handleStartBreak('COFFEE')} className="w-14 h-14 rounded-xl bg-teal-100 text-teal-600 border-2 border-teal-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all" title={t('btn_coffee')}><Coffee size={20}/></button>
                                     </>
                                 )}
                                 {(status === WorkStatus.ON_LUNCH || status === WorkStatus.ON_COFFEE) && (
-                                    <button onClick={handleEndBreak} className="w-20 h-20 rounded-full bg-emerald-500 text-white shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"><PlayCircle size={28}/></button>
+                                    <button onClick={handleEndBreak} className="w-20 h-20 rounded-xl bg-emerald-500 text-white shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all" title={t('btn_return')}><PlayCircle size={28}/></button>
                                 )}
-                                <button onClick={handleEndWork} className="w-14 h-14 rounded-full bg-rose-100 text-rose-600 border-2 border-rose-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all"><StopCircle size={24}/></button>
+                                <button onClick={handleEndWork} className="w-14 h-14 rounded-xl bg-rose-100 text-rose-600 border-2 border-rose-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all" title={t('btn_stop')}><StopCircle size={24}/></button>
                             </div>
                         )}
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatCard icon={Timer} label="Trabalhado" value={`${String(workedHours).padStart(2, '0')}:${String(workedMinutes).padStart(2, '0')}:${String(workedSeconds).padStart(2, '0')}`} active={status !== WorkStatus.IDLE} colorClass="text-indigo-500" />
-                    <StatCard icon={Users} label="Usuário" value={activeUser?.name.split(' ')[0]} subValue={activeUser?.company} colorClass="text-slate-500" />
-                    <StatCard icon={DollarSign} label="Valor Hora" value={`${currencySymbol} ${settings.hourlyRate.toFixed(2)}`} colorClass="text-emerald-500" />
-                    <StatCard icon={Utensils} label="V. Refeição" value={`${currencySymbol} ${settings.foodAllowance.toFixed(2)}`} colorClass="text-orange-500" />
+                    <StatCard icon={Timer} label={t('label_worked')} value={`${String(workedHours).padStart(2, '0')}:${String(workedMinutes).padStart(2, '0')}:${String(workedSeconds).padStart(2, '0')}`} active={status !== WorkStatus.IDLE} colorClass="text-indigo-500" />
+                    <StatCard icon={Users} label={t('label_user')} value={activeUser?.name.split(' ')[0]} subValue={activeUser?.company} colorClass="text-slate-500" />
+                    <StatCard icon={DollarSign} label={t('label_hourly_val')} value={`${currencySymbol} ${settings.hourlyRate.toFixed(2)}`} colorClass="text-emerald-500" />
+                    <StatCard icon={Utensils} label={t('label_meal_allowance')} value={`${currencySymbol} ${settings.foodAllowance.toFixed(2)}`} colorClass="text-orange-500" />
                 </div>
                 
                 <LogHistory 

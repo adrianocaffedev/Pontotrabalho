@@ -17,7 +17,7 @@ const AIReport: React.FC<AIReportProps> = ({ report, loading, onGenerate, hasDat
       {!report && !loading && (
         <div 
           onClick={onGenerate}
-          className="group relative rounded-3xl p-1 overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.01] active:scale-[0.99]"
+          className="group relative rounded-2xl p-1 overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.01] active:scale-[0.99]"
         >
           {/* Animated Gradient Border */}
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-30 group-hover:opacity-60 transition-opacity duration-500 animate-gradient-x"></div>
@@ -48,7 +48,7 @@ const AIReport: React.FC<AIReportProps> = ({ report, loading, onGenerate, hasDat
       )}
 
       {loading && (
-        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-3xl p-10 border border-white/40 dark:border-white/5 shadow-lg flex flex-col items-center justify-center text-center animate-pulse">
+        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl rounded-2xl p-10 border border-white/40 dark:border-white/5 shadow-lg flex flex-col items-center justify-center text-center animate-pulse">
           <div className="relative mb-6">
             <div className="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full"></div>
             <Sparkles className="text-indigo-600 dark:text-indigo-400 animate-spin relative z-10" size={40} />
@@ -59,7 +59,7 @@ const AIReport: React.FC<AIReportProps> = ({ report, loading, onGenerate, hasDat
       )}
 
       {report && !loading && (
-        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl rounded-3xl border border-white/50 dark:border-white/10 shadow-xl shadow-slate-200/50 dark:shadow-black/20 overflow-hidden animate-in zoom-in-95 duration-500">
+        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl rounded-2xl border border-white/50 dark:border-white/10 shadow-xl shadow-slate-200/50 dark:shadow-black/20 overflow-hidden animate-in zoom-in-95 duration-500">
           <div className={`h-2 w-full ${report.mood === 'positive' ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : report.mood === 'warning' ? 'bg-gradient-to-r from-amber-400 to-orange-500' : 'bg-gradient-to-r from-blue-400 to-indigo-500'}`}></div>
           <div className="p-8">
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-8">
@@ -108,7 +108,7 @@ const AIReport: React.FC<AIReportProps> = ({ report, loading, onGenerate, hasDat
             <div className="mt-8 flex justify-center">
                 <button 
                     onClick={onGenerate} 
-                    className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold uppercase tracking-widest transition-colors py-3 px-6 rounded-full hover:bg-white/50 dark:hover:bg-slate-800"
+                    className="text-xs text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold uppercase tracking-widest transition-colors py-3 px-6 rounded-xl hover:bg-white/50 dark:hover:bg-slate-800"
                 >
                     Atualizar Relatório
                 </button>

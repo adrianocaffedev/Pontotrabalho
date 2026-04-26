@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff, CalendarRange } from 'lucide-react';
+import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff, CalendarRange, Files, ShieldAlert } from 'lucide-react';
 import { AppSettings, AppUser, TimeLog, Absence } from '../types';
 import { supabase } from '../services/supabase';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getTranslation, TranslationKey } from '../services/translations';
 
 interface ReportsPortalProps {
     isOpen: boolean;
@@ -121,6 +122,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                         hourlyRate: Number(settsData.hourly_rate),
                         foodAllowance: Number(settsData.food_allowance),
                         currency: settsData.currency,
+                        language: settsData.language || 'pt-PT',
                         overtimePercentage: Number(settsData.overtime_percentage),
                         overtimeDays: settsData.overtime_days || [],
                         socialSecurityRate: Number(settsData.social_security_rate),
@@ -137,14 +139,14 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
     };
 
     const reportStats = useMemo(() => {
-        const userSettings = settingsMap[selectedUserId];
+        const userSettings = settingsMap[selectedUserId] || { dailyWorkHours: 8, hourlyRate: 0, foodAllowance: 0, overtimePercentage: 25, socialSecurityRate: 11, irsRate: 0, language: 'pt-PT', currency: 'EUR' };
         const user = users.find(u => u.id === selectedUserId);
-        if (!userSettings) return null;
+        if (!userSettings && !user) return null;
 
         let totalDurationMs = 0;
         let totalExtraMs = 0;
         let daysWorkedCount = logs.length;
-        let lunchAllowanceTotal = 0;
+        let lunchAllowanceTotalResult = 0;
 
         logs.forEach(log => {
             totalDurationMs += Number(log.total_duration_ms);
@@ -157,7 +159,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             
             // Subsídio de almoço (se trabalhou no dia)
             if (log.total_duration_ms > 0) {
-                lunchAllowanceTotal += userSettings.foodAllowance;
+                lunchAllowanceTotalResult += userSettings.foodAllowance;
             }
         });
 
@@ -167,21 +169,20 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const basePay = totalHours * userSettings.hourlyRate;
         const extraPay = totalExtraHours * (userSettings.hourlyRate * (userSettings.overtimePercentage / 100));
         
-        // --- NOVOS CÁLCULOS (DUODÉCIMOS) ---
+        // --- NOVOS CÁLCULOS (DUODÉCIMOS E PORTUGAL) ---
         const isTemporary = user?.contractType === 'TEMPORARY';
         let duodecimoFerias = 0;
         let duodecimoNatal = 0;
         let businessDays = getBusinessDaysInMonth(startDate);
-
+        
+        // Se o usuário tiver configurado uma taxa horária baseada em 920€ (ex: 5.31€/h)
+        // O basePay aqui será o proporcional às horas registradas.
+        
         if (isTemporary) {
-            // Se mês incompleto ou completo, a regra de proporcionalidade sugerida: 
-            // (Salário Base ÷ 12) × (dias_trabalhados ÷ dias_úteis_no_mês)
-            // Nota: Usamos diasWorkedCount como dias_trabalhados
-            const fullDuodecimo = basePay / 12;
-            const proportionality = businessDays > 0 ? daysWorkedCount / businessDays : 0;
-            
-            duodecimoFerias = fullDuodecimo * Math.min(1, proportionality);
-            duodecimoNatal = fullDuodecimo * Math.min(1, proportionality);
+            // Regra de Duodécimos: 1/12 do salário base por cada subsídio
+            // Calculamos com base no que foi efetivamente ganho de base
+            duodecimoFerias = basePay / 12;
+            duodecimoNatal = basePay / 12;
         }
 
         const totalDuodecimosBruto = duodecimoFerias + duodecimoNatal;
@@ -190,9 +191,13 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const ssDiscount = baseTributavel * (userSettings.socialSecurityRate / 100);
         const irsDiscount = baseTributavel * (userSettings.irsRate / 100);
         
+        // Subsídio de Refeição (Geralmente isento até certo limite em Portugal)
+        const dailyMealAllowance = userSettings.foodAllowance || 8.25;
+        const lunchAllowanceTotal = daysWorkedCount * dailyMealAllowance;
+        
         const bruteTotal = baseTributavel + lunchAllowanceTotal;
-        const netTotal = bruteTotal - ssDiscount - irsDiscount;
-        const employerCost = baseTributavel * 1.2375; // TSU 23.75% + Base
+        const netTotal = (baseTributavel - ssDiscount - irsDiscount) + lunchAllowanceTotal;
+        const employerCost = baseTributavel * 1.2375 + lunchAllowanceTotal; 
 
         return {
             totalHours,
@@ -247,24 +252,33 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
     };
 
     const handleExportPDF = () => {
-        if (logs.length === 0) { alert("Nenhum registro para exportar."); return; }
+        if (!reportStats || logs.length === 0) { 
+            const lang = settingsMap[selectedUserId]?.language || 'pt-PT';
+            alert(getTranslation(lang, 'error_no_data')); 
+            return; 
+        }
         
         const doc = new jsPDF('p', 'mm', 'a4');
         const user = users.find(u => u.id === selectedUserId);
         const settings = settingsMap[selectedUserId];
-        const cur = settings?.currency === 'BRL' ? 'R$' : '€';
+        const lang = settings?.language || 'pt-PT';
+        const t = (key: TranslationKey) => getTranslation(lang, key);
+        
+        const currencySymbol = settings?.currency === 'BRL' ? 'R$' : settings?.currency === 'USD' ? '$' : '€';
+        const cur = currencySymbol;
 
         doc.setFontSize(20);
         doc.setTextColor(79, 70, 229);
-        doc.text("Ponto Inteligente - Relatório de Atividades", 14, 20);
+        doc.text(`Ponto Inteligente - ${t('report_title')}`, 14, 20);
         
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
         doc.text(`Colaborador: ${user?.name || 'N/D'} | Empresa: ${user?.company || 'N/D'}`, 14, 28);
-        doc.text(`Período: ${startDate.split('-').reverse().join('/')} até ${endDate.split('-').reverse().join('/')}`, 14, 33);
+        doc.text(`${t('report_period')}: ${startDate.split('-').reverse().join('/')} até ${endDate.split('-').reverse().join('/')}`, 14, 33);
         
         const rows = logs.map(l => {
-            const duration = (Number(l.total_duration_ms) / 3600000).toFixed(1) + 'h';
+            const durationMs = Number(l.total_duration_ms) || 0;
+            const duration = (durationMs / 3600000).toFixed(1) + 'h';
             const lunch = l.breaks?.find((b:any) => b.type === 'LUNCH');
             const lunchStr = lunch ? `${new Date(lunch.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${lunch.end_time ? new Date(lunch.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...'}` : '---';
             
@@ -286,7 +300,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             styles: { fontSize: 8 }
         });
 
-        const finalY = (doc as any).lastAutoTable.cursor.y + 10;
+        const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 10 : 50;
         
         doc.setFontSize(10);
         doc.setTextColor(30, 41, 59);
@@ -294,17 +308,17 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         
         doc.setFontSize(8);
         doc.setTextColor(100, 116, 139);
-        doc.text(`Vencimento Base (${reportStats?.totalHours.toFixed(1)}h):`, 14, finalY + 7);
-        doc.text(`${cur} ${reportStats?.basePay.toFixed(2)}`, 100, finalY + 7, { align: 'right' });
+        doc.text(`Vencimento Base (${reportStats.totalHours.toFixed(1)}h):`, 14, finalY + 7);
+        doc.text(`${cur} ${reportStats.basePay.toFixed(2)}`, 100, finalY + 7, { align: 'right' });
         
-        if (reportStats?.extraPay && reportStats.extraPay > 0) {
+        if (reportStats.extraPay && reportStats.extraPay > 0) {
             doc.text(`Horas Extras (${reportStats.totalExtraHours.toFixed(1)}h):`, 14, finalY + 12);
             doc.text(`${cur} ${reportStats.extraPay.toFixed(2)}`, 100, finalY + 12, { align: 'right' });
         }
 
-        let currentY = finalY + (reportStats?.extraPay ? 17 : 12);
+        let currentY = finalY + (reportStats.extraPay > 0 ? 17 : 12);
 
-        if (reportStats?.isTemporary) {
+        if (reportStats.isTemporary) {
             doc.text("Duodécimo Subsídio de Férias:", 14, currentY);
             doc.text(`${cur} ${reportStats.duodecimoFerias.toFixed(2)}`, 100, currentY, { align: 'right' });
             
@@ -314,42 +328,45 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             currentY += 10;
         }
 
-        doc.text(`Subsídio de Almoço (${reportStats?.daysWorked} dias):`, 14, currentY);
-        doc.text(`${cur} ${reportStats?.lunchAllowanceTotal.toFixed(2)}`, 100, currentY, { align: 'right' });
+        doc.text(`Subsídio de Almoço (${reportStats.daysWorked} dias):`, 14, currentY);
+        doc.text(`${cur} ${reportStats.lunchAllowanceTotal.toFixed(2)}`, 100, currentY, { align: 'right' });
 
         doc.setFontSize(9);
         doc.setTextColor(16, 185, 129);
         doc.text("Total Bruto:", 14, currentY + 7);
-        doc.text(`${cur} ${reportStats?.bruteTotal.toFixed(2)}`, 100, currentY + 7, { align: 'right' });
+        doc.text(`${cur} ${reportStats.bruteTotal.toFixed(2)}`, 100, currentY + 7, { align: 'right' });
 
         doc.setFontSize(8);
         doc.setTextColor(225, 29, 72);
-        doc.text(`Segurança Social (${settings?.socialSecurityRate}%):`, 14, currentY + 14);
-        doc.text(`(-) ${cur} ${reportStats?.ssDiscount.toFixed(2)}`, 100, currentY + 14, { align: 'right' });
+        doc.text(`Segurança Social (${settings?.socialSecurityRate || 11}%):`, 14, currentY + 14);
+        doc.text(`(-) ${cur} ${reportStats.ssDiscount.toFixed(2)}`, 100, currentY + 14, { align: 'right' });
         
-        doc.text(`Retenção IRS (${settings?.irsRate}%):`, 14, currentY + 19);
-        doc.text(`(-) ${cur} ${reportStats?.irsDiscount.toFixed(2)}`, 100, currentY + 19, { align: 'right' });
+        doc.text(`Retenção IRS (${settings?.irsRate || 0}%):`, 14, currentY + 19);
+        doc.text(`(-) ${cur} ${reportStats.irsDiscount.toFixed(2)}`, 100, currentY + 19, { align: 'right' });
 
         doc.setFontSize(12);
         doc.setTextColor(79, 70, 229);
         doc.text("LÍQUIDO A RECEBER:", 14, currentY + 28);
-        doc.text(`${cur} ${reportStats?.netTotal.toFixed(2)}`, 100, currentY + 28, { align: 'right' });
+        doc.text(`${cur} ${reportStats.netTotal.toFixed(2)}`, 100, currentY + 28, { align: 'right' });
 
-        doc.save(`Relatorio_${user?.name.replace(/\s+/g, '_')}_${startDate}.pdf`);
+        doc.save(`Relatorio_${user?.name.replace(/\s+/g, '_') || 'Funcionario'}_${startDate}.pdf`);
     };
 
     if (!isOpen) return null;
 
-    const currency = settingsMap[selectedUserId]?.currency === 'BRL' ? 'R$' : 'EUR';
+    const userSettings = settingsMap[selectedUserId];
+    const lang = userSettings?.language || 'pt-PT';
+    const t = (key: TranslationKey) => getTranslation(lang, key);
+    const currency = userSettings?.currency === 'BRL' ? 'R$' : userSettings?.currency === 'USD' ? '$' : '€';
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 sm:p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
-            <div className="bg-[#0f172a] w-full max-w-5xl h-full sm:h-[90vh] sm:rounded-[3rem] shadow-2xl flex flex-col overflow-hidden border border-white/10">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300">
+            <div className="bg-[#0f172a] w-full h-full sm:h-[90vh] sm:max-w-5xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-white/10">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-6 border-b border-white/5 bg-slate-900/50">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
                             <TrendingUp size={20} className="text-white" />
                         </div>
                         <div>
@@ -357,7 +374,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Análise de Desempenho e Financeiro</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 transition-all">
+                    <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-slate-400 transition-all">
                         <X size={20} />
                     </button>
                 </div>
@@ -422,10 +439,10 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
 
                     <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         <span className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em] whitespace-nowrap mr-2">Filtros Rápidos:</span>
-                        <button onClick={() => setPresetPeriod('today')} className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Hoje</button>
-                        <button onClick={() => setPresetPeriod('thisWeek')} className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Esta Semana</button>
-                        <button onClick={() => setPresetPeriod('thisMonth')} className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Atual</button>
-                        <button onClick={() => setPresetPeriod('lastMonth')} className="px-4 py-1.5 rounded-full bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Passado</button>
+                        <button onClick={() => setPresetPeriod('today')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Hoje</button>
+                        <button onClick={() => setPresetPeriod('thisWeek')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Esta Semana</button>
+                        <button onClick={() => setPresetPeriod('thisMonth')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Atual</button>
+                        <button onClick={() => setPresetPeriod('lastMonth')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Passado</button>
                     </div>
                 </div>
 
@@ -434,155 +451,185 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-50">
                             <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
-                            <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">Processando dados...</p>
+                            <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">{getTranslation(settingsMap[selectedUserId]?.language || 'pt-PT', 'label_processing')}</p>
                         </div>
                     ) : !selectedUserId ? (
-                        <div className="flex flex-col items-center justify-center py-20 bg-slate-900/20 rounded-[2rem] border border-dashed border-slate-800">
+                        <div className="flex flex-col items-center justify-center py-20 bg-slate-900/20 rounded-2xl border border-dashed border-slate-800">
                              <Users size={48} className="text-slate-700 mb-4" />
-                             <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Nenhum funcionário selecionado</p>
+                             <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{getTranslation('pt-PT', 'label_no_user_selected')}</p>
                         </div>
                     ) : (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             
                             {/* Stats Summary Bento Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/5 p-6 rounded-3xl border border-indigo-500/10">
+                                <div className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/5 p-6 rounded-2xl border border-indigo-500/10">
                                     <div className="flex items-center gap-2 text-indigo-400 mb-2">
                                         <Clock size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Horas Totais</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_total_hours')}</span>
                                     </div>
                                     <p className="text-3xl font-black text-white">{reportStats?.totalHours.toFixed(1)}h</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Estimado para o período</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">{t('report_period')}</p>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 rounded-3xl border border-emerald-500/10">
+                                <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 rounded-2xl border border-emerald-500/10">
                                     <div className="flex items-center gap-2 text-emerald-400 mb-2">
                                         <TrendingUp size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Remuneração Bruta</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_gross_remuneration')}</span>
                                     </div>
-                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.bruteTotal ?? 0).toLocaleString('pt-PT', {minimumFractionDigits: 2})}</p>
+                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.bruteTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
                                     <p className="text-[10px] text-slate-500 mt-1">Salário + Duodécimos + Almoço</p>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-rose-500/20 to-rose-600/5 p-6 rounded-3xl border border-rose-500/10">
+                                <div className="bg-gradient-to-br from-rose-500/20 to-rose-600/5 p-6 rounded-2xl border border-rose-500/10">
                                     <div className="flex items-center gap-2 text-rose-400 mb-2">
                                         <Calculator size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Descontos Totais</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_total_discounts')}</span>
                                     </div>
-                                    <p className="text-3xl font-black text-white">{currency} {((reportStats?.ssDiscount ?? 0) + (reportStats?.irsDiscount ?? 0)).toLocaleString('pt-PT', {minimumFractionDigits: 2})}</p>
+                                    <p className="text-3xl font-black text-white">{currency} {((reportStats?.ssDiscount ?? 0) + (reportStats?.irsDiscount ?? 0)).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
                                     <p className="text-[10px] text-slate-500 mt-1">Seg. Social + IRS</p>
                                 </div>
 
-                                <div className="bg-indigo-600 p-6 rounded-3xl border border-indigo-400/20 shadow-xl shadow-indigo-600/20">
+                                <div className="bg-indigo-600 p-6 rounded-2xl border border-indigo-400/20 shadow-xl shadow-indigo-600/20">
                                     <div className="flex items-center gap-2 text-indigo-100 mb-2">
                                         <DollarSign size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Valor Líquido</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_net_value')}</span>
                                     </div>
-                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.netTotal ?? 0).toLocaleString('pt-PT', {minimumFractionDigits: 2})}</p>
-                                    <p className="text-[10px] text-indigo-200 mt-1">Valor final a transferir</p>
+                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.netTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
+                                    <p className="text-[10px] text-indigo-200 mt-1">{t('report_net')}</p>
                                 </div>
                             </div>
 
-                            {/* Monthly Receipt Section */}
-                            <div className="bg-slate-900 border border-white/5 rounded-[2.5rem] p-8 shadow-2xl overflow-hidden relative">
+                        {/* Monthly Receipt Section */}
+                        <div className="bg-slate-900 border border-white/5 rounded-2xl p-8 shadow-2xl overflow-hidden relative">
                                 <div className="absolute top-0 right-0 p-8 opacity-5">
-                                    <FileText size={120} />
+                                    <Files size={120} />
                                 </div>
                                 
                                 <div className="relative z-10">
                                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
                                         <div>
-                                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                                <Calculator className="text-indigo-500" size={20} />
-                                                Recibo de Processamento Mensal
+                                            <h3 className="text-xl font-black text-white flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                                                    <Calculator className="text-indigo-400" size={20} />
+                                                </div>
+                                                {t('label_salary_receipt')}
                                             </h3>
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-                                                Regime de Trabalho {reportStats?.isTemporary ? 'Temporário (Portugal)' : 'Efetivo'}
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-2">
+                                                Simulação de Processamento {reportStats?.isTemporary ? 'Temporário' : 'Efetivo'} • Portugal
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs font-bold text-slate-400">Dias Úteis: {reportStats?.businessDays}</p>
-                                            <p className="text-xs font-bold text-slate-400">Dias Trabalhados: {reportStats?.daysWorked}</p>
+                                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-[9px] font-bold uppercase tracking-wider mb-2">
+                                                <Calendar size={10} /> {reportStats?.daysWorked} Dias Trabalhados
+                                            </div>
+                                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Período: {startDate} - {endDate}</p>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                                         {/* Remunerações */}
-                                        <div className="space-y-4">
-                                            <h4 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest border-l-2 border-emerald-500 pl-3">Vencimentos (Bruto)</h4>
-                                            
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-slate-400">Salário Base ({reportStats?.totalHours.toFixed(1)}h × {currency} {settingsMap[selectedUserId]?.hourlyRate})</span>
-                                                    <span className="font-bold text-white">{currency} {reportStats?.basePay.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
-                                                </div>
+                                        <div className="space-y-6">
+                                            <div>
+                                                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                                    <TrendingUp size={12} /> 01. Rendimentos Brutos
+                                                </h4>
                                                 
-                                                {reportStats && reportStats.extraPay > 0 && (
-                                                    <div className="flex justify-between items-center text-sm">
-                                                        <span className="text-slate-400">Horas Extras ({reportStats.totalExtraHours.toFixed(1)}h)</span>
-                                                        <span className="font-bold text-white">{currency} {reportStats.extraPay.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                <div className="space-y-4">
+                                                    <div className="flex justify-between items-center group">
+                                                        <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Vencimento Base</span>
+                                                        <span className="font-bold text-white tabular-nums">{currency} {reportStats?.basePay.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                     </div>
-                                                )}
-
-                                                {reportStats?.isTemporary && (
-                                                    <>
-                                                        <div className="flex justify-between items-center text-sm">
-                                                            <span className="text-slate-400">Duodécimo Subsídio de Férias</span>
-                                                            <span className="font-bold text-white">{currency} {reportStats?.duodecimoFerias.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                    
+                                                    {reportStats && reportStats.extraPay > 0 && (
+                                                        <div className="flex justify-between items-center group">
+                                                            <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Horas Suplementares</span>
+                                                            <span className="font-bold text-white tabular-nums">{currency} {reportStats.extraPay.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                         </div>
-                                                        <div className="flex justify-between items-center text-sm">
-                                                            <span className="text-slate-400">Duodécimo Subsídio de Natal</span>
-                                                            <span className="font-bold text-white">{currency} {reportStats?.duodecimoNatal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                    )}
+
+                                                    {reportStats?.isTemporary && (
+                                                        <>
+                                                            <div className="flex justify-between items-center group">
+                                                                <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Duodécimo Subs. Férias (1/12)</span>
+                                                                <span className="font-bold text-white tabular-nums">{currency} {reportStats.duodecimoFerias.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center group">
+                                                                <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Duodécimo Subs. Natal (1/12)</span>
+                                                                <span className="font-bold text-white tabular-nums">{currency} {reportStats.duodecimoNatal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+
+                                                    <div className="flex justify-between items-center group pt-2">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Subsídio de Alimentação</span>
+                                                            <span className="text-[9px] text-slate-600 font-bold uppercase uppercase tracking-tighter">({reportStats?.daysWorked} dias × {currency} {settingsMap[selectedUserId]?.foodAllowance || '8.25'})</span>
                                                         </div>
-                                                    </>
-                                                )}
+                                                        <span className="font-bold text-white tabular-nums">{currency} {reportStats?.lunchAllowanceTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                    </div>
 
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-slate-400">Subsídio de Almoço ({reportStats?.daysWorked} dias)</span>
-                                                    <span className="font-bold text-white">{currency} {reportStats?.lunchAllowanceTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
-                                                </div>
-
-                                                <div className="pt-3 border-t border-white/5 flex justify-between items-center text-lg font-black text-white">
-                                                    <span>Total Bruto</span>
-                                                    <span className="text-emerald-400">{currency} {reportStats?.bruteTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                    <div className="pt-6 border-t border-white/5 flex justify-between items-center">
+                                                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Bruto Estimado</span>
+                                                        <span className="text-xl font-black text-white tabular-nums">{currency} {reportStats?.bruteTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Descontos */}
-                                        <div className="space-y-4">
-                                            <h4 className="text-[10px] font-bold text-rose-500 uppercase tracking-widest border-l-2 border-rose-500 pl-3">Deduções e Impostos</h4>
-                                            
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-slate-400">Segurança Social ({settingsMap[selectedUserId]?.socialSecurityRate}%)</span>
-                                                    <span className="font-bold text-rose-400">(-) {currency} {reportStats?.ssDiscount.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
-                                                </div>
+                                        {/* Descontos e Líquido */}
+                                        <div className="space-y-6">
+                                            <div>
+                                                <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                                    <ShieldAlert size={12} /> 02. Retenções e Encargos
+                                                </h4>
                                                 
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-slate-400">Retenção na Fonte IRS ({settingsMap[selectedUserId]?.irsRate}%)</span>
-                                                    <span className="font-bold text-rose-400">(-) {currency} {reportStats?.irsDiscount.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
-                                                </div>
+                                                <div className="space-y-4">
+                                                    <div className="flex justify-between items-center group">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Segurança Social</span>
+                                                            <span className="text-[9px] text-slate-600 font-bold uppercase tracking-tighter">(Quota Trabalhador {settingsMap[selectedUserId]?.socialSecurityRate}%)</span>
+                                                        </div>
+                                                        <span className="font-bold text-rose-400 tabular-nums">(-) {currency} {reportStats?.ssDiscount.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                    </div>
+                                                    
+                                                    <div className="flex justify-between items-center group">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Retenção na Fonte (IRS)</span>
+                                                            <span className="text-[9px] text-slate-600 font-bold uppercase tracking-tighter">(Taxa Mensal {settingsMap[selectedUserId]?.irsRate}%)</span>
+                                                        </div>
+                                                        <span className="font-bold text-rose-400 tabular-nums">(-) {currency} {reportStats?.irsDiscount.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                    </div>
 
-                                                <div className="pt-3 border-t border-white/5 flex justify-between items-center text-lg font-black text-white">
-                                                    <span>Total Líquido</span>
-                                                    <span className="text-indigo-400 underline decoration-indigo-500/30 underline-offset-8 decoration-2">{currency} {reportStats?.netTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
-                                                </div>
-
-                                                {isAdmin && (
-                                                    <div className="mt-8 pt-8 border-t border-white/5">
-                                                        <div className="bg-indigo-500/5 rounded-2xl p-4 border border-indigo-500/10">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <Briefcase size={12} className="text-indigo-400" />
-                                                                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Backoffice: Custo Empregador</span>
+                                                    <div className="pt-8 border-t border-white/5">
+                                                        <div className="bg-indigo-600/10 rounded-[1.5rem] p-6 border border-indigo-500/20 relative overflow-hidden group">
+                                                            <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10 group-hover:scale-110 transition-transform">
+                                                                <DollarSign size={80} />
                                                             </div>
-                                                            <div className="flex justify-between items-end">
-                                                                <span className="text-[10px] text-slate-500 font-bold uppercase">Total Empresa (Base + TSU)</span>
-                                                                <span className="text-sm font-black text-white">{currency} {reportStats?.employerCost.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                            <div className="relative z-10">
+                                                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-1 block">Valor Líquido Final</span>
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className="text-4xl font-black text-white tabular-nums tracking-tighter">
+                                                                        {currency} {reportStats?.netTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-[9px] text-indigo-300/40 font-bold uppercase tracking-widest mt-2">Valor disponível para transferência</p>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                )}
+
+                                                    {isAdmin && (
+                                                        <div className="mt-6 pt-6 border-t border-white/5 opacity-40 hover:opacity-100 transition-opacity">
+                                                            <div className="flex justify-between items-center px-4 py-3 bg-slate-800/30 rounded-2xl border border-white/5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Briefcase size={14} className="text-slate-500" />
+                                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Custo para Empresa</span>
+                                                                </div>
+                                                                <span className="text-xs font-black text-slate-400">{currency} {reportStats?.employerCost.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -596,11 +643,11 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                         <FileText size={14} className="text-slate-500" /> Detalhamento Diário
                                     </h3>
                                     <div className="flex items-center gap-2">
-                                        <span className="px-3 py-1 bg-slate-800 rounded-full text-[10px] font-bold text-slate-400 border border-slate-700">{logs.length} Dias Registrados</span>
+                                        <span className="px-3 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 border border-slate-700">{logs.length} Dias Registrados</span>
                                     </div>
                                 </div>
 
-                                <div className="bg-slate-900 shadow-2xl rounded-[2.5rem] border border-white/5 overflow-hidden">
+                                <div className="bg-slate-900 shadow-2xl rounded-2xl border border-white/5 overflow-hidden">
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
@@ -649,7 +696,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
-                                                                <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-slate-800 text-white font-mono text-xs font-black border border-white/5">
+                                                                <span className="inline-flex items-center px-4 py-1.5 rounded-xl bg-slate-800 text-white font-mono text-xs font-black border border-white/5">
                                                                     {duration.toFixed(1)}h
                                                                 </span>
                                                             </td>
@@ -675,14 +722,14 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {absences.map(abs => (
-                                            <div key={abs.id} className="p-5 bg-rose-500/5 rounded-[1.8rem] border border-rose-500/10 flex items-start gap-4">
-                                                <div className="w-10 h-10 rounded-2xl bg-rose-500/10 flex items-center justify-center shrink-0">
+                                            <div key={abs.id} className="p-5 bg-rose-500/5 rounded-2xl border border-rose-500/10 flex items-start gap-4">
+                                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
                                                     <CalendarOff size={18} className="text-rose-400" />
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">{new Date(abs.date).toLocaleDateString('pt-BR')}</span>
-                                                        <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-[8px] font-extrabold text-rose-400 uppercase tracking-widest">{abs.type === 'ABSENCE' ? 'Falta' : 'Atraso'}</span>
+                                                        <span className="px-2 py-0.5 rounded-lg bg-rose-500/20 text-[8px] font-extrabold text-rose-400 uppercase tracking-widest">{abs.type === 'ABSENCE' ? 'Falta' : 'Atraso'}</span>
                                                     </div>
                                                     <p className="text-xs text-slate-300 font-medium leading-relaxed italic">"{abs.reason}"</p>
                                                 </div>
@@ -696,14 +743,14 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 </div>
 
                 {/* Footer Actions */}
-                <div className="px-6 py-6 bg-slate-900 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 italic">
-                        <Calculator size={14} className="text-indigo-400" /> Valores baseados nas taxas atuais de SS ({settingsMap[selectedUserId]?.socialSecurityRate}%) e IRS ({settingsMap[selectedUserId]?.irsRate}%)
+                <div className="px-6 py-6 bg-slate-900 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 italic max-w-xs">
+                        <Calculator size={14} className="text-indigo-400 shrink-0" /> Valores baseados nas taxas atuais de SS ({settingsMap[selectedUserId]?.socialSecurityRate || 11}%) e IRS ({settingsMap[selectedUserId]?.irsRate || 0}%)
                     </p>
                     <button 
                         onClick={handleExportPDF}
                         disabled={loading || logs.length === 0}
-                        className="w-full sm:w-auto px-8 py-3 bg-white text-slate-950 rounded-2xl font-bold text-sm shadow-xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full sm:w-auto px-8 py-4 bg-white text-slate-950 rounded-xl font-bold text-sm shadow-xl hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale"
                     >
                         <Download size={18} /> Exportar Relatório PDF
                     </button>
