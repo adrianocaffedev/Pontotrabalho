@@ -620,12 +620,12 @@ const App: React.FC = () => {
                 </span>
                 <span className={`w-1.5 h-1.5 rounded-full ${dbConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
              </div>
-             <button onClick={toggleTheme} className="p-2 sm:p-3 rounded-xl bg-white/40 dark:bg-white/5 hover:bg-white/80 transition-all text-slate-600 dark:text-slate-400"><Sun size={18}/></button>
-             <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 text-xs font-bold uppercase tracking-wider active:scale-95 transition-all">
+             <button onClick={toggleTheme} className="p-2 sm:p-3 rounded-full bg-white/40 dark:bg-white/5 border-b-2 border-slate-300 dark:border-slate-800 hover:bg-white/80 active:border-b-0 active:translate-y-[2px] transition-all text-slate-600 dark:text-slate-400 shadow-sm"><Sun size={18}/></button>
+             <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-b-2 border-rose-200 dark:border-rose-900/50 active:border-b-0 active:translate-y-[2px] text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
                 <LogOut size={16} /> <span className="hidden sm:inline">Sair</span>
              </button>
-             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 active:scale-95 transition-all" title="Relatórios"><TrendingUp size={18}/></button>
-             <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-xl bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:scale-95 transition-all shadow-lg" title="Configurações"><SettingsIcon size={18}/></button>
+             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-full bg-indigo-500 text-white shadow-[0_4px_0_0_#312e81] active:shadow-none active:translate-y-[4px] transition-all" title="Relatórios"><TrendingUp size={18}/></button>
+             <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-full bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:shadow-none active:translate-y-[4px] shadow-[0_4px_0_0_#0f172a] dark:shadow-[0_4px_0_0_#cbd5e1] transition-all" title="Configurações"><SettingsIcon size={18}/></button>
           </div>
         </header>
 
@@ -647,29 +647,29 @@ const App: React.FC = () => {
                     <div className="mt-8 flex items-center gap-6">
                         {status === WorkStatus.IDLE || status === WorkStatus.FINISHED ? (
                             <div className="flex flex-col items-center gap-6">
-                                <button onClick={handleStartWork} className="w-24 h-24 rounded-xl bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all relative group">
-                                    <div className="absolute inset-0 bg-white/20 rounded-xl animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                                    <Play size={32} className="ml-1 fill-current" />
+                                <button onClick={handleStartWork} className="w-28 h-28 rounded-full bg-indigo-600 text-white shadow-[0_8px_0_0_#312e81] shadow-indigo-900/50 flex items-center justify-center hover:bg-indigo-500 active:shadow-none active:translate-y-[8px] transition-all relative group">
+                                    <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                                    <Play size={36} className="ml-1 fill-current" />
                                 </button>
                                 <button 
                                     onClick={() => setIsAbsenceModalOpen(true)} 
-                                    className="px-6 py-3 rounded-xl bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 transition-all font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm"
+                                    className="px-6 py-3 rounded-full bg-white/40 dark:bg-white/5 border-b-2 border-slate-200 dark:border-slate-800 hover:bg-white/80 dark:hover:bg-white/10 active:border-b-0 active:translate-y-[2px] text-slate-600 dark:text-slate-400 transition-all font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm"
                                 >
                                     <CalendarOff size={14} className="text-rose-500" /> {t('settings_justifications')}
                                 </button>
                             </div>
                         ) : (
-                            <div className="flex gap-4 items-center">
+                            <div className="flex gap-6 items-center">
                                 {status === WorkStatus.WORKING && (
                                     <>
-                                        <button onClick={() => handleStartBreak('LUNCH')} className="w-14 h-14 rounded-xl bg-amber-100 text-amber-600 border-2 border-amber-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all" title={t('btn_lunch')}><Utensils size={20}/></button>
-                                        <button onClick={() => handleStartBreak('COFFEE')} className="w-14 h-14 rounded-xl bg-teal-100 text-teal-600 border-2 border-teal-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all" title={t('btn_coffee')}><Coffee size={20}/></button>
+                                        <button onClick={() => handleStartBreak('LUNCH')} className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 border-b-4 border-amber-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-amber-50 transition-all" title={t('btn_lunch')}><Utensils size={24}/></button>
+                                        <button onClick={() => handleStartBreak('COFFEE')} className="w-16 h-16 rounded-full bg-teal-100 text-teal-600 border-b-4 border-teal-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-teal-50 transition-all" title={t('btn_coffee')}><Coffee size={24}/></button>
                                     </>
                                 )}
                                 {(status === WorkStatus.ON_LUNCH || status === WorkStatus.ON_COFFEE) && (
-                                    <button onClick={handleEndBreak} className="w-20 h-20 rounded-xl bg-emerald-500 text-white shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all" title={t('btn_return')}><PlayCircle size={28}/></button>
+                                    <button onClick={handleEndBreak} className="w-24 h-24 rounded-full bg-emerald-500 text-white shadow-[0_8px_0_0_#064e3b] active:shadow-none active:translate-y-[8px] flex items-center justify-center hover:bg-emerald-400 transition-all" title={t('btn_return')}><PlayCircle size={32}/></button>
                                 )}
-                                <button onClick={handleEndWork} className="w-14 h-14 rounded-xl bg-rose-100 text-rose-600 border-2 border-rose-200 shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-all" title={t('btn_stop')}><StopCircle size={24}/></button>
+                                <button onClick={handleEndWork} className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 border-b-4 border-rose-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-rose-50 transition-all" title={t('btn_stop')}><StopCircle size={24}/></button>
                             </div>
                         )}
                     </div>
