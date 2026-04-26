@@ -495,7 +495,7 @@ const App: React.FC = () => {
         <div className={`min-h-screen flex flex-col items-center justify-center p-6 transition-colors duration-500 ${theme === 'dark' ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
             <div className="max-w-lg w-full animate-in zoom-in-95 duration-500">
                 <div className="text-center mb-10">
-                    <div className="w-20 h-20 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/20 rotate-3">
+                    <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/30 ring-4 ring-white/10">
                         <ClockIcon size={40} className="text-white" />
                     </div>
                     <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight mb-2">Ponto<span className="text-indigo-600">Inteligente</span></h1>
@@ -600,7 +600,7 @@ const App: React.FC = () => {
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col min-h-screen">
         <header className="flex flex-col sm:flex-row justify-between items-center mb-8 sm:mb-12 gap-6">
           <div className="flex items-center gap-3">
-             <div className="bg-white dark:bg-slate-800 p-2 sm:p-3 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700">
+             <div className="bg-white dark:bg-slate-800 p-2 sm:p-3 rounded-full shadow-lg border border-slate-100 dark:border-slate-700 shadow-indigo-500/5">
                 <ClockIcon size={24} className="text-indigo-600 dark:text-indigo-400" />
              </div>
              <div>
