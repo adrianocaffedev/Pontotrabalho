@@ -71,5 +71,6 @@ export interface AppUser {
   contractStartDate?: string;
   renewals?: ContractRenewal[];
   pin?: string; // Novo campo para segurança da sessão
+  isAdmin?: boolean; // Novo campo para identificar super usuários
   created_at?: string;
 }

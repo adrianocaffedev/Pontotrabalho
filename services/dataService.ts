@@ -10,11 +10,13 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal } from '../types';
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS contract_start_date TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS renewals JSONB DEFAULT '[]'::JSONB;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS pin TEXT;
+ * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
  * 
  * -- Novas colunas para configurações de tempo e taxas
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS daily_work_hours NUMERIC DEFAULT 8;
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS lunch_duration_minutes NUMERIC DEFAULT 60;
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS coffee_duration_minutes NUMERIC DEFAULT 15;
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'pt-PT';
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS social_security_rate NUMERIC DEFAULT 11;
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS irs_rate NUMERIC DEFAULT 0;
  * 
@@ -78,6 +80,7 @@ const mapUserFromDb = (dbUser: any): AppUser => {
     contractStartDate: dbUser.contract_start_date || '',
     renewals: Array.isArray(dbUser.renewals) ? dbUser.renewals : [],
     pin: dbUser.pin || '', // Adicionado mapeamento do PIN
+    isAdmin: !!dbUser.is_admin, // Adicionado mapeamento do Administrador
     created_at: dbUser.created_at
   };
 };
@@ -102,6 +105,7 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
         contract_start_date: userData.contractStartDate || '',
         renewals: userData.renewals || [],
         pin: userData.pin || '', // Adicionado campo PIN na criação
+        is_admin: userData.isAdmin || false, // Suporte para novo campo admin
         active: true
       })
       .select()
@@ -139,6 +143,7 @@ export const updateAppUser = async (id: string, userData: Partial<AppUser>): Pro
     if (userData.contractType !== undefined) payload.contract_type = String(userData.contractType);
     if (userData.contractStartDate !== undefined) payload.contract_start_date = String(userData.contractStartDate);
     if (userData.pin !== undefined) payload.pin = String(userData.pin); // Adicionado campo PIN na atualização
+    if (userData.isAdmin !== undefined) payload.is_admin = !!userData.isAdmin;
     
     if (userData.renewals !== undefined) {
       payload.renewals = JSON.parse(JSON.stringify(userData.renewals));

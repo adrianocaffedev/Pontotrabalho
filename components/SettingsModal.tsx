@@ -46,6 +46,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     contractType: 'EFFECTIVE',
     contractStartDate: new Date().toISOString().split('T')[0],
     pin: '',
+    isAdmin: false,
     renewals: []
   });
 
@@ -64,10 +65,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             setActiveTab('users');
         } else {
             setActiveTab('general');
+            // If the logged in user is an admin, automatically grant admin view
+            if (currentUser.isAdmin) {
+                setIsAdmin(true);
+            }
         }
         fetchUsers();
     }
-  }, [isOpen, currentUser, settings]);
+  }, [isOpen, currentUser, settings, setIsAdmin]);
 
   useEffect(() => {
     if (activeTab === 'justifications' && isAdmin) {
@@ -98,7 +103,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           alert("Erro ao criar funcionário: " + error);
       } else {
           await fetchUsers(); 
-          setNewUser({ name: '', company: '', contractType: 'EFFECTIVE', contractStartDate: new Date().toISOString().split('T')[0], pin: '', renewals: [] });
+          setNewUser({ name: '', company: '', contractType: 'EFFECTIVE', contractStartDate: new Date().toISOString().split('T')[0], pin: '', isAdmin: false, renewals: [] });
       }
   };
 
@@ -487,7 +492,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <ShieldCheck className="text-indigo-400" size={36} />
                 </div>
                 <h3 className="font-bold text-white mb-2 text-center text-lg">Área do Administrador</h3>
-                <p className="text-sm text-slate-400 font-medium mb-8 text-center max-w-[260px]">Introduza o PIN de gestão para gerenciar a lista de colaboradores.</p>
+                <p className="text-sm text-slate-400 font-medium mb-8 text-center max-w-[260px]">Acesso restrito para administradores do sistema.</p>
                 <form onSubmit={handleAdminLogin} className="w-full max-w-xs space-y-6">
                     <div className="relative">
                         <input 
@@ -518,6 +523,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div className="grid grid-cols-2 gap-3">
                             <input placeholder="Cargo" value={newUser.company} onChange={e => setNewUser({...newUser, company: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
                             <input placeholder="PIN" maxLength={4} value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-center" />
+                        </div>
+                        <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+                             <button 
+                                onClick={() => setNewUser({...newUser, isAdmin: false})}
+                                className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${!newUser.isAdmin ? 'bg-slate-700 text-white' : 'text-slate-500'}`}
+                             >
+                                Padrão
+                             </button>
+                             <button 
+                                onClick={() => setNewUser({...newUser, isAdmin: true})}
+                                className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all ${newUser.isAdmin ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500'}`}
+                             >
+                                Administrador (Super Usuário)
+                             </button>
                         </div>
                         <div className="flex flex-col gap-2">
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Regime Contratual</label>
@@ -572,6 +591,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
                                             <button 
                                                 type="button"
+                                                onClick={() => setEditingUser({...editingUser, isAdmin: false})}
+                                                className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest rounded-lg transition-all ${!editingUser.isAdmin ? 'bg-slate-700 text-white' : 'text-slate-500'}`}
+                                            >
+                                                Comum
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setEditingUser({...editingUser, isAdmin: true})}
+                                                className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.isAdmin ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
+                                            >
+                                                Admin (Super)
+                                            </button>
+                                        </div>
+                                        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
+                                            <button 
+                                                type="button"
                                                 onClick={() => setEditingUser({...editingUser, contractType: 'EFFECTIVE'})}
                                                 className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.contractType === 'EFFECTIVE' ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
                                             >
@@ -605,6 +640,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                     <p className="font-bold text-white">{user.name}</p>
                                                     {user.contractType === 'TEMPORARY' && (
                                                         <span className="text-[7px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded-lg font-black uppercase tracking-tighter">TEMP</span>
+                                                    )}
+                                                    {user.isAdmin && (
+                                                        <span className="text-[7px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-lg font-black uppercase tracking-tighter border border-amber-500/20">ADMIN</span>
                                                     )}
                                                 </div>
                                                 <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{user.company || 'Geral'}</p>

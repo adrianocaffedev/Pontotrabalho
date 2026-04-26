@@ -180,7 +180,10 @@ const App: React.FC = () => {
         const savedUserId = localStorage.getItem(STORAGE_KEY_ACTIVE_USER_ID);
         if (savedUserId) {
             const foundUser = users.find(u => u.id === savedUserId);
-            if (foundUser) setActiveUser(foundUser);
+            if (foundUser) {
+                setActiveUser(foundUser);
+                if (foundUser.isAdmin) setIsGlobalAdmin(true);
+            }
         }
         setIsLoadingData(false);
     };
@@ -317,6 +320,7 @@ const App: React.FC = () => {
           if (isValid) {
               setActiveUser(user);
               localStorage.setItem(STORAGE_KEY_ACTIVE_USER_ID, user.id);
+              if (user.isAdmin) setIsGlobalAdmin(true);
           } else {
               setPinError(true);
               setTimeout(() => {
