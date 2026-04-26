@@ -55,9 +55,29 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 name: u.name,
                 company: u.company,
                 pin: u.pin,
-                active: u.active
+                active: u.active,
+                contractType: u.contract_type // Adicionado para identificar regime temporário
             })));
         }
+    };
+
+    /**
+     * Calcula dias úteis (Segunda a Sexta) em um determinado mês/ano
+     */
+    const getBusinessDaysInMonth = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        let businessDays = 0;
+        for (let i = 1; i <= lastDay; i++) {
+            const d = new Date(year, month, i);
+            const dayOfWeek = d.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                businessDays++;
+            }
+        }
+        return businessDays;
     };
 
     const fetchData = async () => {
@@ -118,11 +138,12 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
 
     const reportStats = useMemo(() => {
         const userSettings = settingsMap[selectedUserId];
+        const user = users.find(u => u.id === selectedUserId);
         if (!userSettings) return null;
 
         let totalDurationMs = 0;
         let totalExtraMs = 0;
-        let daysWorked = logs.length;
+        let daysWorkedCount = logs.length;
         let lunchAllowanceTotal = 0;
 
         logs.forEach(log => {
@@ -145,23 +166,54 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         
         const basePay = totalHours * userSettings.hourlyRate;
         const extraPay = totalExtraHours * (userSettings.hourlyRate * (userSettings.overtimePercentage / 100));
-        const bruteTotal = basePay + extraPay + lunchAllowanceTotal;
         
-        const ssDiscount = (basePay + extraPay) * (userSettings.socialSecurityRate / 100);
-        const irsDiscount = (basePay + extraPay) * (userSettings.irsRate / 100);
+        // --- NOVOS CÁLCULOS (DUODÉCIMOS) ---
+        const isTemporary = user?.contractType === 'TEMPORARY';
+        let duodecimoFerias = 0;
+        let duodecimoNatal = 0;
+        let businessDays = getBusinessDaysInMonth(startDate);
+
+        if (isTemporary) {
+            // Se mês incompleto ou completo, a regra de proporcionalidade sugerida: 
+            // (Salário Base ÷ 12) × (dias_trabalhados ÷ dias_úteis_no_mês)
+            // Nota: Usamos diasWorkedCount como dias_trabalhados
+            const fullDuodecimo = basePay / 12;
+            const proportionality = businessDays > 0 ? daysWorkedCount / businessDays : 0;
+            
+            duodecimoFerias = fullDuodecimo * Math.min(1, proportionality);
+            duodecimoNatal = fullDuodecimo * Math.min(1, proportionality);
+        }
+
+        const totalDuodecimosBruto = duodecimoFerias + duodecimoNatal;
+        const baseTributavel = basePay + extraPay + totalDuodecimosBruto;
+        
+        const ssDiscount = baseTributavel * (userSettings.socialSecurityRate / 100);
+        const irsDiscount = baseTributavel * (userSettings.irsRate / 100);
+        
+        const bruteTotal = baseTributavel + lunchAllowanceTotal;
         const netTotal = bruteTotal - ssDiscount - irsDiscount;
+        const employerCost = baseTributavel * 1.2375; // TSU 23.75% + Base
 
         return {
             totalHours,
             totalExtraHours,
-            daysWorked,
+            daysWorked: daysWorkedCount,
+            businessDays,
+            basePay,
+            extraPay,
+            duodecimoFerias,
+            duodecimoNatal,
+            totalDuodecimosBruto,
+            baseTributavel,
             bruteTotal,
             netTotal,
             ssDiscount,
             irsDiscount,
-            lunchAllowanceTotal
+            lunchAllowanceTotal,
+            employerCost,
+            isTemporary
         };
-    }, [logs, settingsMap, selectedUserId]);
+    }, [logs, settingsMap, selectedUserId, users, startDate]);
 
     const setPresetPeriod = (type: 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth') => {
         const today = new Date();
@@ -235,8 +287,53 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         });
 
         const finalY = (doc as any).lastAutoTable.cursor.y + 10;
-        doc.text(`Total de Horas: ${reportStats?.totalHours.toFixed(1)}h`, 14, finalY);
-        doc.text(`Expectativa de Recebimento Líquido: ${cur} ${reportStats?.netTotal.toFixed(2)}`, 14, finalY + 5);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(30, 41, 59);
+        doc.text("Resumo de Processamento:", 14, finalY);
+        
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Vencimento Base (${reportStats?.totalHours.toFixed(1)}h):`, 14, finalY + 7);
+        doc.text(`${cur} ${reportStats?.basePay.toFixed(2)}`, 100, finalY + 7, { align: 'right' });
+        
+        if (reportStats?.extraPay && reportStats.extraPay > 0) {
+            doc.text(`Horas Extras (${reportStats.totalExtraHours.toFixed(1)}h):`, 14, finalY + 12);
+            doc.text(`${cur} ${reportStats.extraPay.toFixed(2)}`, 100, finalY + 12, { align: 'right' });
+        }
+
+        let currentY = finalY + (reportStats?.extraPay ? 17 : 12);
+
+        if (reportStats?.isTemporary) {
+            doc.text("Duodécimo Subsídio de Férias:", 14, currentY);
+            doc.text(`${cur} ${reportStats.duodecimoFerias.toFixed(2)}`, 100, currentY, { align: 'right' });
+            
+            doc.text("Duodécimo Subsídio de Natal:", 14, currentY + 5);
+            doc.text(`${cur} ${reportStats.duodecimoNatal.toFixed(2)}`, 100, currentY + 5, { align: 'right' });
+            
+            currentY += 10;
+        }
+
+        doc.text(`Subsídio de Almoço (${reportStats?.daysWorked} dias):`, 14, currentY);
+        doc.text(`${cur} ${reportStats?.lunchAllowanceTotal.toFixed(2)}`, 100, currentY, { align: 'right' });
+
+        doc.setFontSize(9);
+        doc.setTextColor(16, 185, 129);
+        doc.text("Total Bruto:", 14, currentY + 7);
+        doc.text(`${cur} ${reportStats?.bruteTotal.toFixed(2)}`, 100, currentY + 7, { align: 'right' });
+
+        doc.setFontSize(8);
+        doc.setTextColor(225, 29, 72);
+        doc.text(`Segurança Social (${settings?.socialSecurityRate}%):`, 14, currentY + 14);
+        doc.text(`(-) ${cur} ${reportStats?.ssDiscount.toFixed(2)}`, 100, currentY + 14, { align: 'right' });
+        
+        doc.text(`Retenção IRS (${settings?.irsRate}%):`, 14, currentY + 19);
+        doc.text(`(-) ${cur} ${reportStats?.irsDiscount.toFixed(2)}`, 100, currentY + 19, { align: 'right' });
+
+        doc.setFontSize(12);
+        doc.setTextColor(79, 70, 229);
+        doc.text("LÍQUIDO A RECEBER:", 14, currentY + 28);
+        doc.text(`${cur} ${reportStats?.netTotal.toFixed(2)}`, 100, currentY + 28, { align: 'right' });
 
         doc.save(`Relatorio_${user?.name.replace(/\s+/g, '_')}_${startDate}.pdf`);
     };
@@ -361,28 +458,134 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                 <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 rounded-3xl border border-emerald-500/10">
                                     <div className="flex items-center gap-2 text-emerald-400 mb-2">
                                         <TrendingUp size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Remuneração Base</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Remuneração Bruta</span>
                                     </div>
-                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.bruteTotal ?? 0).toFixed(2)}</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Bruto sem descontos</p>
+                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.bruteTotal ?? 0).toLocaleString('pt-PT', {minimumFractionDigits: 2})}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Salário + Duodécimos + Almoço</p>
                                 </div>
 
                                 <div className="bg-gradient-to-br from-rose-500/20 to-rose-600/5 p-6 rounded-3xl border border-rose-500/10">
                                     <div className="flex items-center gap-2 text-rose-400 mb-2">
                                         <Calculator size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Descontos</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Descontos Totais</span>
                                     </div>
-                                    <p className="text-3xl font-black text-white">{currency} {((reportStats?.ssDiscount ?? 0) + (reportStats?.irsDiscount ?? 0)).toFixed(2)}</p>
+                                    <p className="text-3xl font-black text-white">{currency} {((reportStats?.ssDiscount ?? 0) + (reportStats?.irsDiscount ?? 0)).toLocaleString('pt-PT', {minimumFractionDigits: 2})}</p>
                                     <p className="text-[10px] text-slate-500 mt-1">Seg. Social + IRS</p>
                                 </div>
 
                                 <div className="bg-indigo-600 p-6 rounded-3xl border border-indigo-400/20 shadow-xl shadow-indigo-600/20">
                                     <div className="flex items-center gap-2 text-indigo-100 mb-2">
                                         <DollarSign size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Recebimento Líquido</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Valor Líquido</span>
                                     </div>
-                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.netTotal ?? 0).toFixed(2)}</p>
-                                    <p className="text-[10px] text-indigo-200 mt-1">Valor final a receber</p>
+                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.netTotal ?? 0).toLocaleString('pt-PT', {minimumFractionDigits: 2})}</p>
+                                    <p className="text-[10px] text-indigo-200 mt-1">Valor final a transferir</p>
+                                </div>
+                            </div>
+
+                            {/* Monthly Receipt Section */}
+                            <div className="bg-slate-900 border border-white/5 rounded-[2.5rem] p-8 shadow-2xl overflow-hidden relative">
+                                <div className="absolute top-0 right-0 p-8 opacity-5">
+                                    <FileText size={120} />
+                                </div>
+                                
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                <Calculator className="text-indigo-500" size={20} />
+                                                Recibo de Processamento Mensal
+                                            </h3>
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                                                Regime de Trabalho {reportStats?.isTemporary ? 'Temporário (Portugal)' : 'Efetivo'}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs font-bold text-slate-400">Dias Úteis: {reportStats?.businessDays}</p>
+                                            <p className="text-xs font-bold text-slate-400">Dias Trabalhados: {reportStats?.daysWorked}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                        {/* Remunerações */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest border-l-2 border-emerald-500 pl-3">Vencimentos (Bruto)</h4>
+                                            
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-slate-400">Salário Base ({reportStats?.totalHours.toFixed(1)}h × {currency} {settingsMap[selectedUserId]?.hourlyRate})</span>
+                                                    <span className="font-bold text-white">{currency} {reportStats?.basePay.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                </div>
+                                                
+                                                {reportStats && reportStats.extraPay > 0 && (
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="text-slate-400">Horas Extras ({reportStats.totalExtraHours.toFixed(1)}h)</span>
+                                                        <span className="font-bold text-white">{currency} {reportStats.extraPay.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                    </div>
+                                                )}
+
+                                                {reportStats?.isTemporary && (
+                                                    <>
+                                                        <div className="flex justify-between items-center text-sm">
+                                                            <span className="text-slate-400">Duodécimo Subsídio de Férias</span>
+                                                            <span className="font-bold text-white">{currency} {reportStats?.duodecimoFerias.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-sm">
+                                                            <span className="text-slate-400">Duodécimo Subsídio de Natal</span>
+                                                            <span className="font-bold text-white">{currency} {reportStats?.duodecimoNatal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                        </div>
+                                                    </>
+                                                )}
+
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-slate-400">Subsídio de Almoço ({reportStats?.daysWorked} dias)</span>
+                                                    <span className="font-bold text-white">{currency} {reportStats?.lunchAllowanceTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                </div>
+
+                                                <div className="pt-3 border-t border-white/5 flex justify-between items-center text-lg font-black text-white">
+                                                    <span>Total Bruto</span>
+                                                    <span className="text-emerald-400">{currency} {reportStats?.bruteTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Descontos */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-[10px] font-bold text-rose-500 uppercase tracking-widest border-l-2 border-rose-500 pl-3">Deduções e Impostos</h4>
+                                            
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-slate-400">Segurança Social ({settingsMap[selectedUserId]?.socialSecurityRate}%)</span>
+                                                    <span className="font-bold text-rose-400">(-) {currency} {reportStats?.ssDiscount.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                </div>
+                                                
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-slate-400">Retenção na Fonte IRS ({settingsMap[selectedUserId]?.irsRate}%)</span>
+                                                    <span className="font-bold text-rose-400">(-) {currency} {reportStats?.irsDiscount.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                </div>
+
+                                                <div className="pt-3 border-t border-white/5 flex justify-between items-center text-lg font-black text-white">
+                                                    <span>Total Líquido</span>
+                                                    <span className="text-indigo-400 underline decoration-indigo-500/30 underline-offset-8 decoration-2">{currency} {reportStats?.netTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                </div>
+
+                                                {isAdmin && (
+                                                    <div className="mt-8 pt-8 border-t border-white/5">
+                                                        <div className="bg-indigo-500/5 rounded-2xl p-4 border border-indigo-500/10">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <Briefcase size={12} className="text-indigo-400" />
+                                                                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Backoffice: Custo Empregador</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-end">
+                                                                <span className="text-[10px] text-slate-500 font-bold uppercase">Total Empresa (Base + TSU)</span>
+                                                                <span className="text-sm font-black text-white">{currency} {reportStats?.employerCost.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

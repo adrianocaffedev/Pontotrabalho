@@ -1,14 +1,15 @@
--- SCRIPT PARA CORREÇÃO DA TABELA DE CONFIGURAÇÕES
--- Execute este SQL no SQL Editor do seu painel do Supabase
+-- ARQUIVO PARA CORREÇÃO DO BANCO DE DADOS (SUPABASE)
+-- Copie estes comandos e execute no painel 'SQL Editor' do seu Supabase.
 
--- 1. Remover duplicatas se existirem (mantendo apenas a entrada mais recente)
-DELETE FROM user_settings a USING user_settings b
-WHERE a.id < b.id AND a.user_id = b.user_id;
+-- 1. Adicionar colunas de configuração de tempo (se não existirem)
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS daily_work_hours NUMERIC DEFAULT 8;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS lunch_duration_minutes NUMERIC DEFAULT 60;
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS coffee_duration_minutes NUMERIC DEFAULT 15;
 
--- 2. Adicionar a restrição de unicidade na coluna user_id
--- Isso é essencial para que o comando UPSERT funcione corretamente
-ALTER TABLE user_settings ADD CONSTRAINT user_settings_user_id_key UNIQUE (user_id);
+-- 2. Adicionar coluna para identificar regime contratual (Temporário vs Efetivo)
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS contract_type TEXT DEFAULT 'EFFECTIVE';
 
--- 3. Garantir que as colunas de taxas existam
-ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS social_security_rate NUMERIC DEFAULT 11;
-ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS irs_rate NUMERIC DEFAULT 0;
+-- 3. Notificar o Supabase para recarregar o cache do esquema (Schema Cache)
+-- Nota: O Supabase costuma recarregar automaticamente após ALTER TABLE, 
+-- mas se o erro persistir, execute:
+NOTIFY pgrst, 'reload schema';

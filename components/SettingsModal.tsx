@@ -487,6 +487,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             <input placeholder="Cargo" value={newUser.company} onChange={e => setNewUser({...newUser, company: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
                             <input placeholder="PIN" maxLength={4} value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-center" />
                         </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Regime Contratual</label>
+                            <div className="flex bg-slate-800 p-1 rounded-2xl border border-slate-700">
+                                <button 
+                                    onClick={() => setNewUser({...newUser, contractType: 'EFFECTIVE'})}
+                                    className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${newUser.contractType === 'EFFECTIVE' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500'}`}
+                                >
+                                    Efetivo
+                                </button>
+                                <button 
+                                    onClick={() => setNewUser({...newUser, contractType: 'TEMPORARY'})}
+                                    className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${newUser.contractType === 'TEMPORARY' ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500'}`}
+                                >
+                                    Temporário (PT)
+                                </button>
+                            </div>
+                        </div>
                         <button onClick={handleCreateUser} disabled={creatingUser || !newUser.name} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg">
                             {creatingUser ? <Loader2 className="animate-spin" size={18}/> : <Plus size={18}/>} Criar Cadastro
                         </button>
@@ -498,21 +515,75 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="space-y-3">
                         {usersList.map(user => (
                             <div key={user.id} className="p-5 bg-slate-800/40 border border-white/5 rounded-[1.5rem] shadow-sm transition-all hover:bg-slate-800/60">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-sm uppercase border border-indigo-500/20">
-                                            {user.name.substring(0, 2)}
+                                {editingUserId === user.id ? (
+                                    <form onSubmit={handleSaveEditUser} className="space-y-4">
+                                        <input 
+                                            value={editingUser.name || ''} 
+                                            onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
+                                            className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm"
+                                        />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input 
+                                                placeholder="Cargo"
+                                                value={editingUser.company || ''} 
+                                                onChange={e => setEditingUser({...editingUser, company: e.target.value})} 
+                                                className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm"
+                                            />
+                                            <input 
+                                                placeholder="PIN"
+                                                maxLength={4}
+                                                value={editingUser.pin || ''} 
+                                                onChange={e => setEditingUser({...editingUser, pin: e.target.value})} 
+                                                className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm font-mono text-center"
+                                            />
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-white">{user.name}</p>
-                                            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{user.company || 'Geral'}</p>
+                                        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setEditingUser({...editingUser, contractType: 'EFFECTIVE'})}
+                                                className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.contractType === 'EFFECTIVE' ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
+                                            >
+                                                Efetivo
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setEditingUser({...editingUser, contractType: 'TEMPORARY'})}
+                                                className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.contractType === 'TEMPORARY' ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
+                                            >
+                                                Temporário
+                                            </button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button type="submit" disabled={isUpdatingUser} className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
+                                                {isUpdatingUser ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} Salvar
+                                            </button>
+                                            <button type="button" onClick={() => setEditingUserId(null)} className="px-4 bg-slate-700 text-white py-2.5 rounded-xl font-bold text-xs">
+                                                <X size={14}/>
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-sm uppercase border border-indigo-500/20">
+                                                {user.name.substring(0, 2)}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-bold text-white">{user.name}</p>
+                                                    {user.contractType === 'TEMPORARY' && (
+                                                        <span className="text-[7px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">TEMP</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{user.company || 'Geral'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => handleEditClick(user)} className="p-3 text-slate-500 hover:text-white transition-all"><Edit2 size={18}/></button>
+                                            <button onClick={async () => { if(confirm(`Excluir ${user.name}?`)) await deleteAppUser(user.id); fetchUsers(); }} className="p-3 text-slate-500 hover:text-rose-500 transition-all"><Trash2 size={18}/></button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-1">
-                                        <button onClick={() => handleEditClick(user)} className="p-3 text-slate-500 hover:text-white transition-all"><Edit2 size={18}/></button>
-                                        <button onClick={async () => { if(confirm(`Excluir ${user.name}?`)) await deleteAppUser(user.id); fetchUsers(); }} className="p-3 text-slate-500 hover:text-rose-500 transition-all"><Trash2 size={18}/></button>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         ))}
                     </div>
