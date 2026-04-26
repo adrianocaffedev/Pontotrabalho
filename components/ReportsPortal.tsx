@@ -278,7 +278,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         
         const rows = logs.map(l => {
             const durationMs = Number(l.total_duration_ms) || 0;
-            const duration = (durationMs / 3600000).toFixed(1) + 'h';
+            const duration = formatDuration(durationMs / 3600000);
             const lunch = l.breaks?.find((b:any) => b.type === 'LUNCH');
             const lunchStr = lunch ? `${new Date(lunch.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${lunch.end_time ? new Date(lunch.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...'}` : '---';
             
@@ -308,11 +308,11 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         
         doc.setFontSize(8);
         doc.setTextColor(100, 116, 139);
-        doc.text(`Vencimento Base (${reportStats.totalHours.toFixed(1)}h):`, 14, finalY + 7);
+        doc.text(`Vencimento Base (${formatDuration(reportStats.totalHours)}):`, 14, finalY + 7);
         doc.text(`${cur} ${reportStats.basePay.toFixed(2)}`, 100, finalY + 7, { align: 'right' });
         
         if (reportStats.extraPay && reportStats.extraPay > 0) {
-            doc.text(`Horas Extras (${reportStats.totalExtraHours.toFixed(1)}h):`, 14, finalY + 12);
+            doc.text(`Horas Extras (${formatDuration(reportStats.totalExtraHours)}):`, 14, finalY + 12);
             doc.text(`${cur} ${reportStats.extraPay.toFixed(2)}`, 100, finalY + 12, { align: 'right' });
         }
 
@@ -350,6 +350,14 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         doc.text(`${cur} ${reportStats.netTotal.toFixed(2)}`, 100, currentY + 28, { align: 'right' });
 
         doc.save(`Relatorio_${user?.name.replace(/\s+/g, '_') || 'Funcionario'}_${startDate}.pdf`);
+    };
+
+    const formatDuration = (hoursDecimal: number | undefined) => {
+        if (!hoursDecimal && hoursDecimal !== 0) return '--h --m';
+        const totalMinutes = Math.round(hoursDecimal * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
     };
 
     if (!isOpen) return null;
@@ -468,7 +476,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                         <Clock size={16} />
                                         <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_total_hours')}</span>
                                     </div>
-                                    <p className="text-3xl font-black text-white">{reportStats?.totalHours.toFixed(1)}h</p>
+                                    <p className="text-3xl font-black text-white">{formatDuration(reportStats?.totalHours)}</p>
                                     <p className="text-[10px] text-slate-500 mt-1">{t('report_period')}</p>
                                 </div>
 
@@ -697,7 +705,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <span className="inline-flex items-center px-4 py-1.5 rounded-xl bg-slate-800 text-white font-mono text-xs font-black border border-white/5">
-                                                                    {duration.toFixed(1)}h
+                                                                    {formatDuration(duration)}
                                                                 </span>
                                                             </td>
                                                         </tr>
