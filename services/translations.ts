@@ -59,7 +59,8 @@ export const translations = {
     label_estimated_total_gross: 'Total Bruto Estimado',
     label_retentions: 'Retenções e Encargos',
     label_social_security: 'Segurança Social',
-    label_irs: 'Retenção na Fonte (IRS)'
+    label_irs: 'Retenção na Fonte (IRS)',
+    label_holiday: 'Feriado'
   },
   'pt-PT': {
     status_idle: 'Disponível',
@@ -120,7 +121,8 @@ export const translations = {
     label_estimated_total_gross: 'Total Bruto Estimado',
     label_retentions: 'Retenções e Encargos',
     label_social_security: 'Segurança Social',
-    label_irs: 'Retenção na Fonte (IRS)'
+    label_irs: 'Retenção na Fonte (IRS)',
+    label_holiday: 'Feriado'
   },
   'en': {
     status_idle: 'Idle',
@@ -181,7 +183,8 @@ export const translations = {
     label_estimated_total_gross: 'Estimated Total Gross',
     label_retentions: 'Retentions & Charges',
     label_social_security: 'Social Security',
-    label_irs: 'Income Tax (IRS)'
+    label_irs: 'Income Tax (IRS)',
+    label_holiday: 'Holiday'
   }
 };
 

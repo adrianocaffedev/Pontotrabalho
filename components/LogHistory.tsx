@@ -64,21 +64,81 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
             <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px]">{t('label_no_logs')}</p>
           </div>
         ) : (
-          visibleHistory.map((entry) => (
-            entry.entryType === 'log' ? (
-              <div key={entry.id} className={`group relative rounded-2xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden ${entry.id === currentLogId ? 'bg-white/70 dark:bg-slate-800/70 border-indigo-200 dark:border-indigo-500/30 shadow-xl' : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5'}`}>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          visibleHistory.map((entry) => {
+            const isHoliday = entry.entryType === 'log' && 
+                             [...(settings.holidays || []), ...systemHolidays].includes((entry as TimeLog).date);
+
+            return entry.entryType === 'log' ? (
+              <div 
+                key={entry.id} 
+                className={`group relative rounded-2xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden 
+                  ${entry.id === currentLogId 
+                    ? 'bg-white/70 dark:bg-slate-800/70 border-indigo-200 dark:border-indigo-500/30 shadow-xl' 
+                    : isHoliday 
+                      ? 'bg-amber-50/40 dark:bg-amber-900/10 border-amber-200/60 dark:border-amber-500/20 shadow-lg shadow-amber-500/5'
+                      : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5'}`}
+              >
+                {/* Holiday Decorative Element */}
+                {isHoliday && (
+                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 blur-2xl rounded-full pointer-events-none"></div>
+                )}
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
                   <div className="flex items-center gap-5">
-                    <div className={`p-3.5 rounded-xl shadow-sm border transition-colors ${entry.id === currentLogId ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-white/80 dark:bg-slate-800/80 text-indigo-500 dark:text-indigo-400 border-white dark:border-slate-700'}`}><Calendar size={22}/></div>
-                    <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{entry.date.split('-').reverse().join('/')}</p><p className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">{new Date(entry.startTime).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'})} <ArrowRight size={14} className="opacity-30" />{entry.endTime ? new Date(entry.endTime).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'}) : <span className="text-indigo-500 animate-pulse italic">{t('label_open')}</span>}</p></div>
+                    <div className={`p-3.5 rounded-xl shadow-sm border transition-colors 
+                      ${entry.id === currentLogId 
+                        ? 'bg-indigo-500 text-white border-indigo-400' 
+                        : isHoliday
+                          ? 'bg-amber-500 text-white border-amber-400 shadow-md shadow-amber-500/20'
+                          : 'bg-white/80 dark:bg-slate-800/80 text-indigo-500 dark:text-indigo-400 border-white dark:border-slate-700'}`}
+                    >
+                      {isHoliday ? <CalendarDays size={22}/> : <Calendar size={22}/>}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isHoliday ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+                          {entry.date.split('-').reverse().join('/')}
+                        </p>
+                        {isHoliday && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[8px] font-black tracking-tighter uppercase border border-amber-200 dark:border-amber-500/30">
+                            {t('label_holiday')}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+                        {new Date(entry.startTime).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'})} 
+                        <ArrowRight size={14} className="opacity-30" />
+                        {entry.endTime 
+                          ? new Date(entry.endTime).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'}) 
+                          : <span className="text-indigo-500 animate-pulse italic">{t('label_open')}</span>}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
-                    <div className="flex flex-col items-end"><span className="font-mono font-black text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-slate-800/60 px-4 py-2 rounded-xl text-base border border-white/60 dark:border-slate-700/50 shadow-sm">{calculateDurationStr(entry.totalDurationMs)}</span><p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 mr-1">{t('label_total_time')}</p></div>
-                    <div className="flex gap-2"><button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-white transition-all shadow-sm"><Edit3 size={18}/></button><button onClick={() => { if(confirm("Excluir este registro permanentemente?")) onDelete(entry.id); }} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-white transition-all shadow-sm"><Trash2 size={18}/></button></div>
+                    <div className="flex flex-col items-end">
+                      <span className={`font-mono font-black px-4 py-2 rounded-xl text-base border shadow-sm 
+                        ${isHoliday 
+                          ? 'text-amber-700 dark:text-amber-200 bg-amber-100/60 dark:bg-amber-900/40 border-amber-200/50 dark:border-amber-700/50' 
+                          : 'text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-slate-800/60 border-white/60 dark:border-slate-700/50'}`}
+                      >
+                        {calculateDurationStr(entry.totalDurationMs)}
+                      </span>
+                      <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 mr-1 ${isHoliday ? 'text-amber-500' : 'text-slate-400'}`}>
+                        {t('label_total_time')}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-white transition-all shadow-sm">
+                        <Edit3 size={18}/>
+                      </button>
+                      <button onClick={() => { if(confirm("Excluir este registro permanentemente?")) onDelete(entry.id); }} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-white transition-all shadow-sm">
+                        <Trash2 size={18}/>
+                      </button>
+                    </div>
                   </div>
                 </div>
                 {entry.absences && entry.absences.length > 0 && (
-                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 relative z-10">
                       {entry.absences.map(a => (
                          <div key={a.id} className="flex flex-col gap-2 p-3 bg-rose-500/5 rounded-xl border border-rose-500/10">
                             <div className="flex items-center justify-between">
@@ -120,8 +180,8 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                          </div>
                     )}
                 </div>
-            )
-          ))
+            );
+          })
         )}
       </div>
 
