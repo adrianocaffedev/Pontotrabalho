@@ -712,7 +712,7 @@ const App: React.FC = () => {
       </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => { setIsSettingsOpen(false); refreshUsersList(); }} settings={settings} onSave={handleSaveSettings} currentUser={activeUser} onSelectUser={setActiveUser} systemHolidays={systemHolidays} isAdmin={isGlobalAdmin} setIsAdmin={setIsGlobalAdmin} />
-      <ReportsPortal isOpen={isReportsOpen} onClose={() => setIsReportsOpen(false)} currentUser={activeUser} isAdmin={isGlobalAdmin} />
+      <ReportsPortal isOpen={isReportsOpen} onClose={() => setIsReportsOpen(false)} currentUser={activeUser} isAdmin={isGlobalAdmin} systemHolidays={systemHolidays} />
       <AbsenceModal isOpen={isAbsenceModalOpen} onClose={() => setIsAbsenceModalOpen(false)} onSave={handleSaveAbsence} />
       <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} settings={settings} />
     </div>

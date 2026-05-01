@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff, CalendarRange, Files, ShieldAlert } from 'lucide-react';
+import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff, CalendarRange, Files, ShieldAlert, Utensils } from 'lucide-react';
 import { AppSettings, AppUser, TimeLog, Absence } from '../types';
 import { supabase } from '../services/supabase';
 import { jsPDF } from 'jspdf';
@@ -12,9 +12,10 @@ interface ReportsPortalProps {
     onClose: () => void;
     currentUser: AppUser | null;
     isAdmin: boolean;
+    systemHolidays: string[];
 }
 
-const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentUser, isAdmin }) => {
+const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentUser, isAdmin, systemHolidays }) => {
     const [loading, setLoading] = useState(false);
     const [logs, setLogs] = useState<any[]>([]);
     const [absences, setAbsences] = useState<any[]>([]);
@@ -144,12 +145,24 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         if (!userSettings && !user) return null;
 
         let totalDurationMs = 0;
+        let currentBasePay = 0;
         let totalExtraMs = 0;
         let daysWorkedCount = logs.length;
         let lunchAllowanceTotalResult = 0;
 
         logs.forEach(log => {
-            totalDurationMs += Number(log.total_duration_ms);
+            const logDurationMs = Number(log.total_duration_ms);
+            totalDurationMs += logDurationMs;
+            
+            const isHoliday = [...(userSettings.holidays || []), ...systemHolidays].includes(log.date);
+            const hours = logDurationMs / 3600000;
+
+            if (isHoliday) {
+                // Feriado: Paga 100% extra (x2)
+                currentBasePay += hours * (userSettings.hourlyRate * 2);
+            } else {
+                currentBasePay += hours * userSettings.hourlyRate;
+            }
             
             // Cálculo de horas extras (simplificado para o relatório)
             const expectedMs = userSettings.dailyWorkHours * 3600000;
@@ -157,7 +170,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 totalExtraMs += (log.total_duration_ms - expectedMs);
             }
             
-            // Subsídio de almoço (se trabalhou no dia)
+            // Subsídio de almoço
             if (log.total_duration_ms > 0) {
                 lunchAllowanceTotalResult += userSettings.foodAllowance;
             }
@@ -166,7 +179,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const totalHours = totalDurationMs / 3600000;
         const totalExtraHours = totalExtraMs / 3600000;
         
-        const basePay = totalHours * userSettings.hourlyRate;
+        const basePay = currentBasePay;
         const extraPay = totalExtraHours * (userSettings.hourlyRate * (userSettings.overtimePercentage / 100));
         
         // --- NOVOS CÁLCULOS (DUODÉCIMOS E PORTUGAL) ---
@@ -195,8 +208,8 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const dailyMealAllowance = userSettings.foodAllowance || 8.25;
         const lunchAllowanceTotal = daysWorkedCount * dailyMealAllowance;
         
-        const bruteTotal = baseTributavel + lunchAllowanceTotal;
-        const netTotal = (baseTributavel - ssDiscount - irsDiscount) + lunchAllowanceTotal;
+        const bruteTotal = baseTributavel; // Excluído Subsídio de Alimentação da remuneração bruta base
+        const netTotal = (baseTributavel - ssDiscount - irsDiscount); // Líquido no banco (sem cartão refeição)
         const employerCost = baseTributavel * 1.2375 + lunchAllowanceTotal; 
 
         return {
@@ -218,7 +231,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             employerCost,
             isTemporary
         };
-    }, [logs, settingsMap, selectedUserId, users, startDate]);
+    }, [logs, settingsMap, selectedUserId, users, startDate, systemHolidays]);
 
     const setPresetPeriod = (type: 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth') => {
         const today = new Date();
@@ -282,8 +295,10 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             const lunch = l.breaks?.find((b:any) => b.type === 'LUNCH');
             const lunchStr = lunch ? `${new Date(lunch.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${lunch.end_time ? new Date(lunch.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...'}` : '---';
             
+            const isHolidayDay = [...(settings?.holidays || []), ...systemHolidays].includes(l.date);
+            
             return [
-                l.date.split('-').reverse().join('/'),
+                `${l.date.split('-').reverse().join('/')}${isHolidayDay ? ' (F)' : ''}`,
                 new Date(l.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
                 lunchStr,
                 l.end_time ? new Date(l.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Aberto',
@@ -486,7 +501,16 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                         <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_gross_remuneration')}</span>
                                     </div>
                                     <p className="text-3xl font-black text-white">{currency} {(reportStats?.bruteTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Salário + Duodécimos + Almoço</p>
+                                    <p className="text-[10px] text-slate-500 mt-1 font-medium italic">Salário + Extras + Duodécimos</p>
+                                </div>
+
+                                <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 p-6 rounded-2xl border border-amber-500/10">
+                                    <div className="flex items-center gap-2 text-amber-500 mb-2">
+                                        <Utensils size={16} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Alimentação (Cartão)</span>
+                                    </div>
+                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.lunchAllowanceTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Benefício Isento (Pago em Cartão)</p>
                                 </div>
 
                                 <div className="bg-gradient-to-br from-rose-500/20 to-rose-600/5 p-6 rounded-2xl border border-rose-500/10">
@@ -504,7 +528,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                         <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_net_value')}</span>
                                     </div>
                                     <p className="text-3xl font-black text-white">{currency} {(reportStats?.netTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
-                                    <p className="text-[10px] text-indigo-200 mt-1">{t('report_net')}</p>
+                                    <p className="text-[10px] text-indigo-200 mt-1">Líquido a receber em conta</p>
                                 </div>
                             </div>
 
@@ -569,16 +593,18 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                         </>
                                                     )}
 
-                                                    <div className="flex justify-between items-center group pt-2">
+                                                    <div className="flex justify-between items-center group pt-2 px-3 py-2 bg-slate-800/20 rounded-lg border border-white/5">
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Subsídio de Alimentação</span>
-                                                            <span className="text-[9px] text-slate-600 font-bold uppercase uppercase tracking-tighter">({reportStats?.daysWorked} dias × {currency} {settingsMap[selectedUserId]?.foodAllowance || '8.25'})</span>
+                                                            <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors flex items-center gap-2">
+                                                                <Utensils size={12} className="text-amber-500" /> Subsídio de Alimentação
+                                                            </span>
+                                                            <span className="text-[9px] text-slate-600 font-bold uppercase tracking-tighter">(Pago em Cartão Especial • Isento)</span>
                                                         </div>
-                                                        <span className="font-bold text-white tabular-nums">{currency} {reportStats?.lunchAllowanceTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
+                                                        <span className="font-bold text-amber-500 tabular-nums">{currency} {reportStats?.lunchAllowanceTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                     </div>
 
                                                     <div className="pt-6 border-t border-white/5 flex justify-between items-center">
-                                                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Bruto Estimado</span>
+                                                        <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Bruto de Rendimentos</span>
                                                         <span className="text-xl font-black text-white tabular-nums">{currency} {reportStats?.bruteTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                     </div>
                                                 </div>
@@ -671,12 +697,18 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                 {logs.map((log: any) => {
                                                     const lunchBreak = log.breaks?.find((b: any) => b.type === 'LUNCH');
                                                     const duration = Number(log.total_duration_ms) / 3600000;
+                                                    const isHoliday = [...(userSettings?.holidays || []), ...systemHolidays].includes(log.date);
                                                     
                                                     return (
-                                                        <tr key={log.id} className="hover:bg-white/[0.02] transition-colors group">
+                                                        <tr key={log.id} className={`hover:bg-white/[0.02] transition-colors group ${isHoliday ? 'bg-amber-500/5' : ''}`}>
                                                             <td className="px-6 py-4">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-sm font-bold text-white">{new Date(log.date).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-sm font-bold text-white">{new Date(log.date).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}</span>
+                                                                        {isHoliday && (
+                                                                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase tracking-tighter border border-amber-500/20">Feriado</span>
+                                                                        )}
+                                                                    </div>
                                                                     <span className="text-[10px] text-slate-500 font-medium uppercase">{new Date(log.date).toLocaleDateString('pt-BR', {weekday:'short'})}</span>
                                                                 </div>
                                                             </td>
