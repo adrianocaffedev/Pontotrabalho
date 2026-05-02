@@ -48,6 +48,12 @@ export interface AppSettings {
   holidays: string[];
   socialSecurityRate: number;
   irsRate: number;
+  // Novas configurações de horário e notificações
+  shiftStart?: string; // Ex: "08:00"
+  shiftEnd?: string;   // Ex: "17:00"
+  lunchStart?: string; // Ex: "12:00"
+  enableNotifications?: boolean;
+  reminderBufferMinutes?: number;
 }
 
 export interface AnalysisResult {

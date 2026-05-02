@@ -254,6 +254,70 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         {activeTab === 'general' && (
             <form onSubmit={handleSaveGeneral} className="space-y-8 animate-in slide-in-from-left-4">
                 
+                {/* Configurações de Horários de Turno e Lembretes */}
+                <div className="space-y-4 p-5 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 shadow-sm shadow-indigo-500/5">
+                    <h4 className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-[0.2em] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                           <BellRing size={12}/> {t('settings_shift_schedule')}
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-[9px] lowercase opacity-50">Notificações</span>
+                           <button 
+                            type="button" 
+                            onClick={() => setFormData({...formData, enableNotifications: !formData.enableNotifications})}
+                            className={`w-10 h-5 rounded-full relative transition-all duration-300 ${formData.enableNotifications ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                           >
+                            <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${formData.enableNotifications ? 'left-5.5' : 'left-0.5'}`}></div>
+                           </button>
+                        </div>
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{t('settings_shift_start')}</label>
+                            <input 
+                                type="time"
+                                value={formData.shiftStart || '08:00'}
+                                onChange={e => setFormData({...formData, shiftStart: e.target.value})}
+                                className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{t('settings_shift_end')}</label>
+                            <input 
+                                type="time"
+                                value={formData.shiftEnd || '17:00'}
+                                onChange={e => setFormData({...formData, shiftEnd: e.target.value})}
+                                className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{t('settings_lunch_start')}</label>
+                            <input 
+                                type="time"
+                                value={formData.lunchStart || '12:00'}
+                                onChange={e => setFormData({...formData, lunchStart: e.target.value})}
+                                className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{t('settings_reminder_buffer')}</label>
+                            <div className="relative">
+                                <input 
+                                    type="number"
+                                    value={formData.reminderBufferMinutes || 0}
+                                    onChange={e => setFormData({...formData, reminderBufferMinutes: Number(e.target.value)})}
+                                    className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-xl font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/-2 text-[9px] font-black text-slate-600 uppercase">min</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Configurações de Jornada e Intervalos */}
                 <div className="space-y-4">
                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">

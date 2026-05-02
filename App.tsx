@@ -220,6 +220,7 @@ const App: React.FC = () => {
 
 
   const [alarmTriggered, setAlarmTriggered] = useState(false);
+  const lastReminderTimeRef = useRef<string | null>(null);
   const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const playNotificationSound = () => {
@@ -244,50 +245,93 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (!activeUser || !currentLogId || (status !== WorkStatus.ON_LUNCH && status !== WorkStatus.ON_COFFEE)) {
-        setAlarmTriggered(false);
-        return;
+  const sendSmartNotification = (titleKey: TranslationKey, bodyKey: TranslationKey) => {
+    const timeKey = `${now.getHours()}:${now.getMinutes()}`;
+    if (lastReminderTimeRef.current === timeKey) return; // Evitar disparar várias vezes no mesmo minuto
+    
+    lastReminderTimeRef.current = timeKey;
+    
+    if (Notification.permission === 'granted') {
+        new Notification(t(titleKey), {
+            body: t(bodyKey),
+            icon: '/favicon.ico'
+        });
+    } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission();
     }
+    
+    playNotificationSound();
+  };
 
-    const checkBreakNotification = () => {
-        if (alarmTriggered) return;
+  // Efeito para Lembretes Inteligentes (Shift e Almoço)
+  useEffect(() => {
+    if (!activeUser || !settings.enableNotifications) return;
 
-        const currentLog = logs.find(l => l.id === currentLogId);
-        if (!currentLog) return;
+    const checkTimers = () => {
+        const nowHours = now.getHours();
+        const nowMinutes = now.getMinutes();
+        const currentTimeStr = `${String(nowHours).padStart(2, '0')}:${String(nowMinutes).padStart(2, '0')}`;
+        const buffer = settings.reminderBufferMinutes || 0;
 
-        const lastBreak = currentLog.breaks[currentLog.breaks.length - 1];
-        if (!lastBreak || lastBreak.endTime) return;
+        // Função auxiliar para calcular tempo com buffer
+        const getTimeWithBuffer = (timeStr: string, buf: number) => {
+            if (!timeStr) return "";
+            const [h, m] = timeStr.split(':').map(Number);
+            const d = new Date();
+            d.setHours(h, m, 0, 0);
+            const adjusted = new Date(d.getTime() - (buf * 60 * 1000));
+            return `${String(adjusted.getHours()).padStart(2, '0')}:${String(adjusted.getMinutes()).padStart(2, '0')}`;
+        };
 
-        const breakStartTime = new Date(lastBreak.startTime).getTime();
-        const breakDurationLimit = lastBreak.type === 'LUNCH' 
-            ? settings.lunchDurationMinutes 
-            : settings.coffeeDurationMinutes;
-        
-        const notificationTime = breakStartTime + ((breakDurationLimit - settings.notificationMinutes) * 60 * 1000);
-        
-        if (Date.now() >= notificationTime) {
-            const typeLabel = lastBreak.type === 'LUNCH' ? 'Almoço' : 'Café';
-            
-            if (Notification.permission === 'granted') {
-                new Notification(`Intervalo de ${typeLabel}`, {
-                    body: `Faltam ${settings.notificationMinutes} minutos para terminar seu intervalo.`,
-                    icon: '/favicon.ico'
-                });
-            } else if (Notification.permission !== 'denied') {
-                Notification.requestPermission();
+        // 1. Lembrete de Início de Turno
+        if (status === WorkStatus.IDLE || status === WorkStatus.FINISHED) {
+            const shiftStartTime = getTimeWithBuffer(settings.shiftStart || "08:00", buffer);
+            if (currentTimeStr === shiftStartTime) {
+                sendSmartNotification('notif_clock_in_title', 'notif_clock_in_body');
             }
-            
-            playNotificationSound();
-            setAlarmTriggered(true);
+        }
+
+        // 2. Lembrete de Início de Almoço
+        if (status === WorkStatus.WORKING) {
+            const lunchStartTime = getTimeWithBuffer(settings.lunchStart || "12:00", buffer);
+            if (currentTimeStr === lunchStartTime) {
+                sendSmartNotification('notif_lunch_start_title', 'notif_lunch_start_body');
+            }
+        }
+
+        // 3. Lembrete de Fim de Turno
+        if (status === WorkStatus.WORKING) {
+            const shiftEndTime = getTimeWithBuffer(settings.shiftEnd || "17:00", buffer);
+            if (currentTimeStr === shiftEndTime) {
+                sendSmartNotification('notif_clock_out_title', 'notif_clock_out_body');
+            }
+        }
+
+        // 4. Lembrete de Retorno do Almoço / Café (Lógica de intervalo decorrido)
+        if (status === WorkStatus.ON_LUNCH || status === WorkStatus.ON_COFFEE) {
+            const currentLog = logs.find(l => l.id === currentLogId);
+            if (currentLog) {
+                const lastBreak = currentLog.breaks[currentLog.breaks.length - 1];
+                if (lastBreak && !lastBreak.endTime) {
+                    const breakStartTime = new Date(lastBreak.startTime).getTime();
+                    const limit = lastBreak.type === 'LUNCH' ? settings.lunchDurationMinutes : settings.coffeeDurationMinutes;
+                    const notifyAt = breakStartTime + ((limit - buffer) * 60 * 1000);
+                    
+                    if (Date.now() >= notifyAt && !alarmTriggered) {
+                        sendSmartNotification('notif_lunch_end_title', 'notif_lunch_end_body');
+                        setAlarmTriggered(true);
+                    }
+                }
+            }
+        } else if (alarmTriggered) {
+            setAlarmTriggered(false);
         }
     };
 
-    const interval = setInterval(checkBreakNotification, 30000); // Check every 30s
-    checkBreakNotification(); // Check immediately
-
+    const interval = setInterval(checkTimers, 30000); // Checa a cada 30 segundos
+    checkTimers();
     return () => clearInterval(interval);
-  }, [status, currentLogId, logs, settings, alarmTriggered, activeUser]);
+  }, [status, now, settings, activeUser, logs, currentLogId, alarmTriggered]);
 
   const handleLogout = () => {
       setActiveUser(null);

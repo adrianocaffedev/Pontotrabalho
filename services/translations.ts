@@ -60,7 +60,21 @@ export const translations = {
     label_retentions: 'Retenções e Encargos',
     label_social_security: 'Segurança Social',
     label_irs: 'Retenção na Fonte (IRS)',
-    label_holiday: 'Feriado'
+    label_holiday: 'Feriado',
+    settings_shift_schedule: 'Horários e Lembretes',
+    settings_shift_start: 'Início do Turno',
+    settings_shift_end: 'Fim do Turno',
+    settings_lunch_start: 'Início do Almoço',
+    settings_enable_notifications: 'Ativar Notificações',
+    settings_reminder_buffer: 'Aviso antecipado (min)',
+    notif_clock_in_title: 'Hora de começar!',
+    notif_clock_in_body: 'Não se esqueça de iniciar a sua jornada.',
+    notif_lunch_start_title: 'Hora de almoçar!',
+    notif_lunch_start_body: 'Está na hora da pausa para almoço.',
+    notif_lunch_end_title: 'Bom regresso!',
+    notif_lunch_end_body: 'Não se esqueça de retomar a jornada após o almoço.',
+    notif_clock_out_title: 'Fim da jornada!',
+    notif_clock_out_body: 'Está na hora de encerrar o dia. Bom descanso!'
   },
   'pt-PT': {
     status_idle: 'Disponível',
@@ -122,7 +136,21 @@ export const translations = {
     label_retentions: 'Retenções e Encargos',
     label_social_security: 'Segurança Social',
     label_irs: 'Retenção na Fonte (IRS)',
-    label_holiday: 'Feriado'
+    label_holiday: 'Feriado',
+    settings_shift_schedule: 'Horários e Lembretes',
+    settings_shift_start: 'Início do Turno',
+    settings_shift_end: 'Fim do Turno',
+    settings_lunch_start: 'Início do Almoço',
+    settings_enable_notifications: 'Ativar Notificações',
+    settings_reminder_buffer: 'Aviso antecipado (min)',
+    notif_clock_in_title: 'Hora de começar!',
+    notif_clock_in_body: 'Não se esqueça de iniciar a sua jornada.',
+    notif_lunch_start_title: 'Hora de almoçar!',
+    notif_lunch_start_body: 'Está na hora da pausa para almoço.',
+    notif_lunch_end_title: 'Bom regresso!',
+    notif_lunch_end_body: 'Não se esqueça de retomar a jornada após o almoço.',
+    notif_clock_out_title: 'Fim da jornada!',
+    notif_clock_out_body: 'Está na hora de encerrar o dia. Bom descanso!'
   },
   'en': {
     status_idle: 'Idle',
@@ -184,7 +212,21 @@ export const translations = {
     label_retentions: 'Retentions & Charges',
     label_social_security: 'Social Security',
     label_irs: 'Income Tax (IRS)',
-    label_holiday: 'Holiday'
+    label_holiday: 'Holiday',
+    settings_shift_schedule: 'Shift & Reminders',
+    settings_shift_start: 'Shift Start',
+    settings_shift_end: 'Shift End',
+    settings_lunch_start: 'Lunch Start',
+    settings_enable_notifications: 'Enable Notifications',
+    settings_reminder_buffer: 'Reminder Buffer (min)',
+    notif_clock_in_title: 'Time to work!',
+    notif_clock_in_body: "Don't forget to clock in your shift.",
+    notif_lunch_start_title: 'Lunch time!',
+    notif_lunch_start_body: 'Time to clock out for lunch break.',
+    notif_lunch_end_title: 'Back to work!',
+    notif_lunch_end_body: "Don't forget to clock back in from lunch.",
+    notif_clock_out_title: 'End of shift!',
+    notif_clock_out_body: 'Time to clock out and rest.'
   }
 };
 
