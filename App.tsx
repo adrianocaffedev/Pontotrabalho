@@ -663,12 +663,8 @@ const App: React.FC = () => {
                    <Download size={16} /> <span>Instalar App</span>
                 </button>
              )}
-             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm">
-                <Database size={14} className={dbConnected ? "text-emerald-500" : "text-rose-500"} />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    {dbConnected ? 'Conectado' : 'Desconectado'}
-                </span>
-                <span className={`w-1.5 h-1.5 rounded-full ${dbConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+             <div className="flex items-center px-3 py-2 rounded-xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm" title={dbConnected ? 'Conectado' : 'Desconectado'}>
+                <Database size={16} className={dbConnected ? "text-emerald-500" : "text-rose-500"} />
              </div>
              <button onClick={toggleTheme} className="p-2 sm:p-3 rounded-full bg-white/40 dark:bg-white/5 border-b-2 border-slate-300 dark:border-slate-800 hover:bg-white/80 active:border-b-0 active:translate-y-[2px] transition-all text-slate-600 dark:text-slate-400 shadow-sm"><Sun size={18}/></button>
              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-b-2 border-rose-200 dark:border-rose-900/50 active:border-b-0 active:translate-y-[2px] text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
