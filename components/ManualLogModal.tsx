@@ -93,6 +93,23 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
     });
   };
 
+  // Helper para formatar HH:mm
+  const formatTime = (hours: number, minutes: number) => {
+    const adjustedHours = (hours % 24).toString().padStart(2, '0');
+    const adjustedMinutes = minutes.toString().padStart(2, '0');
+    return `${adjustedHours}:${adjustedMinutes}`;
+  };
+
+  // Helper para adicionar minutos a uma string de tempo HH:mm
+  const addMinutesToTime = (timeStr: string, minutesToAdd: number) => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return '';
+    
+    const totalMinutes = h * 60 + m + minutesToAdd;
+    return formatTime(Math.floor(totalMinutes / 60), totalMinutes % 60);
+  };
+
   const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setStartTime(value);
@@ -101,26 +118,33 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
     if (value && !initialLog) {
         const [h, m] = value.split(':').map(Number);
         if (!isNaN(h) && !isNaN(m)) {
-            // Helper para formatar HH:mm
-            const formatTime = (hours: number, minutes: number) => {
-                const adjustedHours = (hours % 24).toString().padStart(2, '0');
-                const adjustedMinutes = minutes.toString().padStart(2, '0');
-                return `${adjustedHours}:${adjustedMinutes}`;
-            };
-
             // Regra: Usar configurações dinâmicas
             const lunchStartH = h + 4;
             const lunchDurMin = settings.lunchDurationMinutes;
             const dailyH = settings.dailyWorkHours;
 
             setLunchStartTime(formatTime(lunchStartH, m));
-            
-            const lunchEndTotalMin = (lunchStartH * 60) + m + lunchDurMin;
-            setLunchEndTime(formatTime(Math.floor(lunchEndTotalMin / 60), lunchEndTotalMin % 60));
+            setLunchEndTime(addMinutesToTime(formatTime(lunchStartH, m), lunchDurMin));
             
             const endTotalMin = (h * 60) + m + (dailyH * 60) + lunchDurMin;
             setEndTime(formatTime(Math.floor(endTotalMin / 60), endTotalMin % 60));
         }
+    }
+  };
+
+  const handleLunchStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLunchStartTime(value);
+    if (value) {
+      setLunchEndTime(addMinutesToTime(value, settings.lunchDurationMinutes));
+    }
+  };
+
+  const handleCoffeeStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCoffeeStartTime(value);
+    if (value) {
+      setCoffeeEndTime(addMinutesToTime(value, settings.coffeeDurationMinutes));
     }
   };
 
@@ -270,7 +294,7 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
             <div className="grid grid-cols-2 gap-4">
                 <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
                     <label className="block text-xs font-bold text-amber-600 dark:text-amber-400/80 mb-1">Início Almoço</label>
-                    <input type="time" value={lunchStartTime} onChange={(e) => setLunchStartTime(e.target.value)} className="w-full bg-transparent outline-none font-mono font-bold text-amber-800 dark:text-amber-300 text-lg dark:[color-scheme:dark]" />
+                    <input type="time" value={lunchStartTime} onChange={handleLunchStartTimeChange} className="w-full bg-transparent outline-none font-mono font-bold text-amber-800 dark:text-amber-300 text-lg dark:[color-scheme:dark]" />
                 </div>
                 <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
                     <label className="block text-xs font-bold text-amber-600 dark:text-amber-400/80 mb-1">Fim Almoço</label>
@@ -281,7 +305,7 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
             <div className="grid grid-cols-2 gap-4">
                 <div className="bg-teal-50/50 dark:bg-teal-900/20 p-3 rounded-xl border border-teal-100 dark:border-teal-900/30">
                     <label className="block text-xs font-bold text-teal-600 dark:text-teal-400/80 mb-1">Início Café</label>
-                    <input type="time" value={coffeeStartTime} onChange={(e) => setCoffeeStartTime(e.target.value)} className="w-full bg-transparent outline-none font-mono font-bold text-teal-800 dark:text-teal-300 text-lg dark:[color-scheme:dark]" />
+                    <input type="time" value={coffeeStartTime} onChange={handleCoffeeStartTimeChange} className="w-full bg-transparent outline-none font-mono font-bold text-teal-800 dark:text-teal-300 text-lg dark:[color-scheme:dark]" />
                 </div>
                 <div className="bg-teal-50/50 dark:bg-teal-900/20 p-3 rounded-xl border border-teal-100 dark:border-teal-900/30">
                     <label className="block text-xs font-bold text-teal-600 dark:text-teal-400/80 mb-1">Fim Café</label>
