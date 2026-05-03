@@ -43,6 +43,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newUser, setNewUser] = useState<Partial<AppUser>>({
     name: '',
     company: '',
+    jobTitle: '',
     contractType: 'EFFECTIVE',
     contractStartDate: new Date().toISOString().split('T')[0],
     pin: '',
@@ -103,7 +104,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           alert("Erro ao criar funcionário: " + error);
       } else {
           await fetchUsers(); 
-          setNewUser({ name: '', company: '', contractType: 'EFFECTIVE', contractStartDate: new Date().toISOString().split('T')[0], pin: '', isAdmin: false, renewals: [] });
+          setNewUser({ name: '', company: '', jobTitle: '', contractType: 'EFFECTIVE', contractStartDate: new Date().toISOString().split('T')[0], pin: '', isAdmin: false, renewals: [] });
       }
   };
 
@@ -584,8 +585,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <h4 className="text-sm font-bold mb-4 flex items-center gap-2 text-white"><UserPlus size={18} className="text-indigo-400"/> Novo Funcionário</h4>
                     <div className="space-y-4">
                         <input placeholder="Nome Completo" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        <input placeholder="Empresa" value={newUser.company} onChange={e => setNewUser({...newUser, company: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         <div className="grid grid-cols-2 gap-3">
-                            <input placeholder="Cargo" value={newUser.company} onChange={e => setNewUser({...newUser, company: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                            <input placeholder="Cargo" value={newUser.jobTitle} onChange={e => setNewUser({...newUser, jobTitle: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20" />
                             <input placeholder="PIN" maxLength={4} value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="w-full p-4 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono text-center" />
                         </div>
                         <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
@@ -637,11 +639,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                             onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
                                             className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm"
                                         />
+                                        <input 
+                                            placeholder="Empresa"
+                                            value={editingUser.company || ''} 
+                                            onChange={e => setEditingUser({...editingUser, company: e.target.value})} 
+                                            className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm"
+                                        />
                                         <div className="grid grid-cols-2 gap-2">
                                             <input 
                                                 placeholder="Cargo"
-                                                value={editingUser.company || ''} 
-                                                onChange={e => setEditingUser({...editingUser, company: e.target.value})} 
+                                                value={editingUser.jobTitle || ''} 
+                                                onChange={e => setEditingUser({...editingUser, jobTitle: e.target.value})} 
                                                 className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm"
                                             />
                                             <input 
@@ -709,7 +717,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                         <span className="text-[7px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-lg font-black uppercase tracking-tighter border border-amber-500/20">ADMIN</span>
                                                     )}
                                                 </div>
-                                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{user.company || 'Geral'}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{user.company || 'Geral'}</p>
+                                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">{user.jobTitle || 'Colaborador'}</p>
                                             </div>
                                         </div>
                                         <div className="flex gap-1">

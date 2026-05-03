@@ -66,6 +66,7 @@ export interface AppUser {
   name: string;
   active: boolean;
   company?: string;
+  jobTitle?: string;
   contractType?: 'EFFECTIVE' | 'TEMPORARY';
   contractStartDate?: string;
   renewals?: ContractRenewal[];

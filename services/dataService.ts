@@ -6,6 +6,7 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal } from '../types';
  * IMPORTANTE: Para que esta aplicação funcione, você DEVE executar o seguinte SQL no seu painel do Supabase:
  * 
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS company TEXT;
+ * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS job_title TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS contract_type TEXT DEFAULT 'EFFECTIVE';
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS contract_start_date TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS renewals JSONB DEFAULT '[]'::JSONB;
@@ -86,6 +87,7 @@ const mapUserFromDb = (dbUser: any): AppUser => {
     name: dbUser.name || '',
     active: dbUser.active !== false,
     company: dbUser.company || '',
+    jobTitle: dbUser.job_title || '',
     contractType: (dbUser.contract_type as 'EFFECTIVE' | 'TEMPORARY') || 'EFFECTIVE',
     contractStartDate: dbUser.contract_start_date || '',
     renewals: Array.isArray(dbUser.renewals) ? dbUser.renewals : [],
@@ -111,6 +113,7 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
       .insert({ 
         name: userData.name, 
         company: userData.company || '',
+        job_title: userData.jobTitle || '',
         contract_type: userData.contractType || 'EFFECTIVE',
         contract_start_date: userData.contractStartDate || '',
         renewals: userData.renewals || [],
@@ -161,6 +164,7 @@ export const updateAppUser = async (id: string, userData: Partial<AppUser>): Pro
     const payload: any = {};
     if (userData.name !== undefined) payload.name = String(userData.name);
     if (userData.company !== undefined) payload.company = String(userData.company);
+    if (userData.jobTitle !== undefined) payload.job_title = String(userData.jobTitle);
     if (userData.contractType !== undefined) payload.contract_type = String(userData.contractType);
     if (userData.contractStartDate !== undefined) payload.contract_start_date = String(userData.contractStartDate);
     if (userData.pin !== undefined) payload.pin = String(userData.pin); // Adicionado campo PIN na atualização
