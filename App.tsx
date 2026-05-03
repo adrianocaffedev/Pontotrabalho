@@ -105,6 +105,7 @@ const App: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
   // Login State
   const [usersList, setUsersList] = useState<AppUser[]>([]);
@@ -123,6 +124,24 @@ const App: React.FC = () => {
   });
   
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+    }
+  };
 
   const refreshUsersList = useCallback(async () => {
     const users = await getAppUsers();
@@ -636,6 +655,15 @@ const App: React.FC = () => {
           </div>
 
       <div className="flex items-center gap-3">
+             {deferredPrompt && (
+                <button 
+                  onClick={handleInstallClick} 
+                  className="flex items-center gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
+                  title="Instalar Aplicação"
+                >
+                   <Download size={16} /> <span>Instalar App</span>
+                </button>
+             )}
              <div className="flex items-center px-3 py-2 rounded-xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm" title={dbConnected ? 'Conectado' : 'Desconectado'}>
                 <Database size={16} className={dbConnected ? "text-emerald-500" : "text-rose-500"} />
              </div>
