@@ -10,7 +10,7 @@ import ReportsPortal from './components/ReportsPortal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarClock, CalendarOff, Moon, Sun, Database, Users, Clock as ClockIcon, LogOut, Lock, ChevronRight, Loader2, User, Key, ArrowRight, Delete, Code2, Download, ClipboardList, TrendingUp } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';

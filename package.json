@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.51.0",
     "@supabase/supabase-js": "^2.105.1",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",

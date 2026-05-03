@@ -56,13 +56,6 @@ export interface AppSettings {
   reminderBufferMinutes?: number;
 }
 
-export interface AnalysisResult {
-  summary: string;
-  overtime: boolean;
-  mood: 'positive' | 'neutral' | 'warning';
-  suggestions: string[];
-}
-
 export interface ContractRenewal {
   id: string;
   date: string;

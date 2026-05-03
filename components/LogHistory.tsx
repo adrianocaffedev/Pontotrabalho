@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { TimeLog, AppUser, AppSettings, Absence } from '../types';
-import { Trash2, Utensils, Coffee, ArrowRight, Clock, CalendarOff, Download, Check, X, PlusCircle, Lock, Edit3, Calendar, FileText, ChevronDown, ChevronUp, CalendarRange, Filter, History, CalendarDays, MessageSquare } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { Trash2, ArrowRight, Clock, CalendarOff, Download, PlusCircle, Edit3, Calendar, CalendarDays, MessageSquare } from 'lucide-react';
 import { getTranslation, TranslationKey } from '../services/translations';
 
 interface LogHistoryProps {
