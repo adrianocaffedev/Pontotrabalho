@@ -19,10 +19,15 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal } from '../types';
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'pt-PT';
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS social_security_rate NUMERIC DEFAULT 11;
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS irs_rate NUMERIC DEFAULT 0;
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS shift_start TEXT DEFAULT '08:00';
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS shift_end TEXT DEFAULT '17:00';
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS lunch_start TEXT DEFAULT '12:00';
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS enable_notifications BOOLEAN DEFAULT FALSE;
+ * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS reminder_buffer_minutes NUMERIC DEFAULT 5;
  * 
  * -- Novas colunas para justificativas (absences)
  * ALTER TABLE absences ADD COLUMN IF NOT EXISTS date TEXT;
- * ALTER TABLE absences ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id);
+ * ALTER TABLE absences ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE CASCADE;
  * ALTER TABLE absences ALTER COLUMN time_log_id DROP NOT NULL;
  */
 
@@ -42,6 +47,11 @@ const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
     holidays: dbSettings.holidays || [],
     socialSecurityRate: Number(dbSettings.social_security_rate) || 0,
     irsRate: Number(dbSettings.irs_rate) || 0,
+    shiftStart: dbSettings.shift_start || '08:00',
+    shiftEnd: dbSettings.shift_end || '17:00',
+    lunchStart: dbSettings.lunch_start || '12:00',
+    enableNotifications: !!dbSettings.enable_notifications,
+    reminderBufferMinutes: Number(dbSettings.reminder_buffer_minutes) || 5,
   };
 };
 
@@ -132,7 +142,12 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
       overtime_percentage: 25,
       overtime_days: [0, 6],
       social_security_rate: 11,
-      irs_rate: 0
+      irs_rate: 0,
+      shift_start: '08:00',
+      shift_end: '17:00',
+      lunch_start: '12:00',
+      enable_notifications: false,
+      reminder_buffer_minutes: 5
     });
 
     return { user: mapUserFromDb(data), error: null };
@@ -238,15 +253,50 @@ export const upsertStandaloneAbsence = async (absence: Omit<import('../types').A
   }
 };
 
+export const updateStandaloneAbsence = async (id: string, absence: Partial<import('../types').Absence>): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('absences').update({
+      date: absence.date,
+      type: absence.type,
+      reason: absence.reason,
+      start_time: absence.startTime || null,
+      end_time: absence.endTime || null
+    }).eq('id', id);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+};
+
+export const deleteStandaloneAbsence = async (id: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('absences').delete().eq('id', id);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+};
+
 export const fetchAllJustifications = async (): Promise<any[]> => {
   try {
     const { data, error } = await supabase
       .from('absences')
       .select(`*, app_users (name)`)
       .order('date', { ascending: false });
-    if (error) throw error;
+    
+    if (error) {
+      if (error.code === 'PGRST200') {
+         console.error("ERRO DE RELACIONAMENTO: A tabela 'absences' não tem uma Chave Estrangeira para 'app_users'.");
+         // Retornar os dados sem o join se falhar, para não quebrar a tela
+         const { data: simpleData } = await supabase.from('absences').select('*').order('date', { ascending: false });
+         return simpleData || [];
+      }
+      throw error;
+    }
     return data || [];
-  } catch (err) {
+  } catch (err: any) {
     console.error("Erro ao buscar justificativas:", err);
     return [];
   }
@@ -339,6 +389,11 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
     holidays: settings.holidays || [], 
     social_security_rate: settings.socialSecurityRate,
     irs_rate: settings.irsRate,
+    shift_start: settings.shiftStart,
+    shift_end: settings.shiftEnd,
+    lunch_start: settings.lunchStart,
+    enable_notifications: settings.enableNotifications,
+    reminder_buffer_minutes: settings.reminderBufferMinutes,
     user_id: userId
   };
   try {

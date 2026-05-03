@@ -29,6 +29,11 @@ const DEFAULT_SETTINGS: AppSettings = {
     holidays: [],
     socialSecurityRate: 11,
     irsRate: 0,
+    shiftStart: '08:00',
+    shiftEnd: '17:00',
+    lunchStart: '12:00',
+    enableNotifications: false,
+    reminderBufferMinutes: 5,
 };
 
 const generateId = () => {
@@ -190,33 +195,34 @@ const App: React.FC = () => {
     initApp();
   }, []);
 
-  useEffect(() => {
-    const loadUserData = async () => {
-        if (!activeUser) return;
-        setIsLoadingData(true);
-        const { logs: remoteLogs, settings: remoteSettings, systemHolidays: fetchedHolidays, standaloneAbsences: fetchedStandalone } = await fetchRemoteData(activeUser.id);
-        setLogs(remoteLogs);
-        setSettings(remoteSettings || DEFAULT_SETTINGS);
-        setSystemHolidays(fetchedHolidays || []);
-        setStandaloneAbsences(fetchedStandalone || []);
-        
-        const lastLog = remoteLogs.length > 0 ? remoteLogs[remoteLogs.length - 1] : null;
-        if (lastLog && !lastLog.endTime) {
-            setCurrentLogId(lastLog.id);
-            const lastBreak = lastLog.breaks.length > 0 ? lastLog.breaks[lastLog.breaks.length - 1] : null;
-            if (lastBreak && !lastBreak.endTime) {
-                setStatus(lastBreak.type === 'LUNCH' ? WorkStatus.ON_LUNCH : WorkStatus.ON_COFFEE);
-            } else {
-                setStatus(WorkStatus.WORKING);
-            }
-        } else {
-            setStatus(WorkStatus.IDLE);
-            setCurrentLogId(null);
-        }
-        setIsLoadingData(false);
-    };
-    loadUserData();
+  const loadUserData = useCallback(async () => {
+      if (!activeUser) return;
+      setIsLoadingData(true);
+      const { logs: remoteLogs, settings: remoteSettings, systemHolidays: fetchedHolidays, standaloneAbsences: fetchedStandalone } = await fetchRemoteData(activeUser.id);
+      setLogs(remoteLogs);
+      setSettings(remoteSettings || DEFAULT_SETTINGS);
+      setSystemHolidays(fetchedHolidays || []);
+      setStandaloneAbsences(fetchedStandalone || []);
+      
+      const lastLog = remoteLogs.length > 0 ? remoteLogs[remoteLogs.length - 1] : null;
+      if (lastLog && !lastLog.endTime) {
+          setCurrentLogId(lastLog.id);
+          const lastBreak = lastLog.breaks.length > 0 ? lastLog.breaks[lastLog.breaks.length - 1] : null;
+          if (lastBreak && !lastBreak.endTime) {
+              setStatus(lastBreak.type === 'LUNCH' ? WorkStatus.ON_LUNCH : WorkStatus.ON_COFFEE);
+          } else {
+              setStatus(WorkStatus.WORKING);
+          }
+      } else {
+          setStatus(WorkStatus.IDLE);
+          setCurrentLogId(null);
+      }
+      setIsLoadingData(false);
   }, [activeUser]);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
 
 
   const [alarmTriggered, setAlarmTriggered] = useState(false);
@@ -753,7 +759,14 @@ const App: React.FC = () => {
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => { setIsSettingsOpen(false); refreshUsersList(); }} settings={settings} onSave={handleSaveSettings} currentUser={activeUser} onSelectUser={setActiveUser} systemHolidays={systemHolidays} isAdmin={isGlobalAdmin} setIsAdmin={setIsGlobalAdmin} />
       <ReportsPortal isOpen={isReportsOpen} onClose={() => setIsReportsOpen(false)} currentUser={activeUser} isAdmin={isGlobalAdmin} systemHolidays={systemHolidays} />
-      <AbsenceModal isOpen={isAbsenceModalOpen} onClose={() => setIsAbsenceModalOpen(false)} onSave={handleSaveAbsence} />
+      <AbsenceModal 
+        isOpen={isAbsenceModalOpen} 
+        onClose={() => setIsAbsenceModalOpen(false)} 
+        onSave={handleSaveAbsence} 
+        userId={activeUser?.id}
+        existingAbsences={standaloneAbsences}
+        onRefresh={loadUserData}
+      />
       <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} settings={settings} />
     </div>
   );
