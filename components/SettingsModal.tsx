@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Info, MessageSquare, Files } from 'lucide-react';
-import { AppSettings, AppUser, ContractRenewal } from '../types';
+import { AppSettings, AppUser, ContractRenewal, TimeLog } from '../types';
 import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser, fetchAllJustifications } from '../services/dataService';
 import { getTranslation, TranslationKey } from '../services/translations';
 
@@ -28,7 +28,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     isAdmin,
     setIsAdmin
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'general' | 'justifications'>(currentUser ? 'general' : 'users');
+  const [activeTab, setActiveTab] = useState<'users' | 'general' | 'justifications' | 'compensation'>(currentUser ? 'general' : 'users');
   const [formData, setFormData] = useState<AppSettings>(settings);
   const t = (key: TranslationKey) => getTranslation(settings.language || 'pt-PT', key);
   const [isSaving, setIsSaving] = useState(false);
@@ -39,6 +39,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const [justifications, setJustifications] = useState<any[]>([]);
   const [loadingJustifications, setLoadingJustifications] = useState(false);
+
+  // Time Compensation States
+  const [compensationLogs, setCompensationLogs] = useState<TimeLog[]>([]);
+  const [loadingCompensation, setLoadingCompensation] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   
   const [newUser, setNewUser] = useState<Partial<AppUser>>({
     name: '',
@@ -79,7 +84,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     if (activeTab === 'justifications' && isAdmin) {
         fetchJustifications();
     }
-  }, [activeTab, isAdmin]);
+    if (activeTab === 'compensation' && currentUser) {
+        fetchCompensationLogs();
+    }
+  }, [activeTab, isAdmin, currentUser, selectedMonth]);
+
+  const fetchCompensationLogs = async () => {
+      if (!currentUser) return;
+      setLoadingCompensation(true);
+      const { logs } = await import('../services/dataService').then(m => m.fetchRemoteData(currentUser.id));
+      
+      // Filter by month
+      const filtered = logs.filter(log => log.date.startsWith(selectedMonth));
+      setCompensationLogs(filtered);
+      setLoadingCompensation(false);
+  };
 
   const fetchUsers = async () => {
       setLoadingUsers(true);
@@ -172,7 +191,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm animate-fade-in text-left">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-hidden flex flex-col border border-slate-200 dark:border-white/10 relative transition-colors">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] overflow-hidden flex flex-col border border-slate-200 dark:border-white/10 relative transition-colors">
         
         {/* Modal Header */}
         <div className="flex items-center justify-between px-8 py-6 shrink-0 border-b border-slate-100 dark:border-white/5">
@@ -185,15 +204,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         
         {/* Tab Headers */}
         {isAdmin && (
-            <div className="flex px-8 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/50">
-                <button onClick={() => setActiveTab('users')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'users' ? 'border-emerald-500 text-emerald-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                    {t('settings_users')}
+            <div className="flex px-2 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/50 overflow-x-auto scrollbar-hide">
+                <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[90px] py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'users' ? 'border-emerald-500 text-emerald-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                    Colaboradores
                 </button>
-                <button onClick={() => setActiveTab('general')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'general' ? 'border-emerald-500 text-emerald-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                <button onClick={() => setActiveTab('general')} className={`flex-1 min-w-[80px] py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'general' ? 'border-emerald-500 text-emerald-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                     {t('settings_general')}
                 </button>
-                <button onClick={() => setActiveTab('justifications')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'justifications' ? 'border-emerald-500 text-emerald-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                    {t('settings_justifications')}
+                {currentUser && (
+                    <button onClick={() => setActiveTab('compensation')} className={`flex-1 min-w-[100px] py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'compensation' ? 'border-emerald-500 text-emerald-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                        Banco Horas
+                    </button>
+                )}
+                <button onClick={() => setActiveTab('justifications')} className={`flex-1 min-w-[90px] py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 ${activeTab === 'justifications' ? 'border-emerald-500 text-emerald-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                    Justificar
                 </button>
             </div>
         )}
@@ -252,9 +276,160 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
         )}
         
+        {activeTab === 'compensation' && currentUser && (
+            <div className="space-y-6 pt-6 animate-in slide-in-from-right-4 pb-20">
+                <div className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-500/5 rounded-2xl border border-emerald-100 dark:border-emerald-500/10">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                            <Clock size={20} />
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-tight">Banco de Horas</h4>
+                            <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Poupando e compensando</p>
+                        </div>
+                    </div>
+                    <input 
+                        type="month" 
+                        value={selectedMonth} 
+                        onChange={e => setSelectedMonth(e.target.value)}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-lg p-2 text-xs font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20 [color-scheme:light] dark:[color-scheme:dark]" 
+                    />
+                </div>
+
+                {loadingCompensation ? (
+                    <div className="flex justify-center py-10"><Loader2 className="animate-spin text-emerald-500" /></div>
+                ) : (
+                    <>
+                        {/* Resumo do Mês */}
+                        {(() => {
+                            const dailyTargetMs = (formData.dailyWorkHours || 8) * 3600000;
+                            let totalBalanceMs = 0;
+                            let totalWorkedMs = 0;
+                            let daysLogged = compensationLogs.length;
+
+                            compensationLogs.forEach(log => {
+                                totalWorkedMs += log.totalDurationMs;
+                                // Only calculate balance for completed days or days with end time
+                                if (log.endTime) {
+                                    totalBalanceMs += (log.totalDurationMs - dailyTargetMs);
+                                }
+                            });
+
+                            const formatBalance = (ms: number) => {
+                                const absMs = Math.abs(ms);
+                                const hours = Math.floor(absMs / 3600000);
+                                const minutes = Math.floor((absMs % 3600000) / 60000);
+                                return `${ms < 0 ? '-' : '+'}${hours}h ${minutes}m`;
+                            };
+
+                            const isPositive = totalBalanceMs >= 0;
+
+                            return (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className={`p-4 rounded-2xl border ${isPositive ? 'bg-emerald-50 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/5 border-rose-100 dark:border-rose-500/20'}`}>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Saldo Acumulado</p>
+                                            <p className={`text-2xl font-black ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                {formatBalance(totalBalanceMs)}
+                                            </p>
+                                        </div>
+                                        <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-white/5">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Dias Registrados</p>
+                                            <p className="text-2xl font-black text-slate-800 dark:text-white">{daysLogged}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Lista de Dias */}
+                                    <div className="space-y-3">
+                                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Detalhamento Diário</h4>
+                                        {compensationLogs.length === 0 ? (
+                                            <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                                                <History size={32} className="mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                                                <p className="text-xs text-slate-500 font-medium">Sem registros para este mês.</p>
+                                            </div>
+                                        ) : (
+                                            compensationLogs.map(log => {
+                                                const balanceMs = log.totalDurationMs - dailyTargetMs;
+                                                const dayIsPositive = balanceMs >= 0;
+                                                const workedHours = Math.floor(log.totalDurationMs / 3600000);
+                                                const workedMinutes = Math.floor((log.totalDurationMs % 3600000) / 60000);
+
+                                                // Clean date format
+                                                const dateObj = new Date(log.date);
+                                                const dayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' });
+                                                const dayNum = dateObj.getDate();
+
+                                                return (
+                                                    <div key={log.id} className="p-4 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-xl flex items-center justify-between group hover:border-emerald-500/30 transition-all shadow-sm">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="flex flex-col items-center justify-center w-10 h-10 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600">
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase leading-none">{dayName}</span>
+                                                                <span className="text-sm font-black text-slate-700 dark:text-white leading-none mt-1">{dayNum}</span>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Jornada</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-bold text-slate-700 dark:text-white">{log.startTime}</span>
+                                                                    <span className="text-slate-300 dark:text-slate-600">→</span>
+                                                                    <span className="text-xs font-bold text-slate-700 dark:text-white">{log.endTime || '--:--'}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="flex items-center gap-6">
+                                                            <div className="text-right hidden sm:block">
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Trabalhado</p>
+                                                                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{workedHours}h {workedMinutes}m</p>
+                                                            </div>
+                                                            <div className="text-right min-w-[60px]">
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mb-0.5">Balanço</p>
+                                                                <p className={`text-sm font-black ${dayIsPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                    {log.endTime ? formatBalance(balanceMs) : '---'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+
+                                    {/* Dica de Compensação */}
+                                    {totalBalanceMs < 0 && (
+                                        <div className="p-4 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 rounded-2xl flex gap-3">
+                                            <Info size={18} className="text-amber-500 shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-tight mb-1">Como Compensar?</p>
+                                                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                                                    Você está com um débito de <span className="font-bold text-rose-500">{formatBalance(totalBalanceMs)}</span>. 
+                                                    Tente sair alguns minutos mais tarde nos próximos dias ou reduza o tempo de almoço para equilibrar seu saldo.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {totalBalanceMs > 0 && (
+                                        <div className="p-4 bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10 rounded-2xl flex gap-3">
+                                            <Check size={18} className="text-emerald-500 shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-tight mb-1">Saldo Positivo!</p>
+                                                <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                                                    Você tem <span className="font-bold text-emerald-500">{formatBalance(totalBalanceMs)}</span> acumulados. 
+                                                    Pode usar esse crédito para sair mais cedo em um dia de menor movimento!
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </>
+                )}
+            </div>
+        )}
+                
         {activeTab === 'general' && (
             <form onSubmit={handleSaveGeneral} className="space-y-8 animate-in slide-in-from-left-4">
-                
                 {/* Configurações de Horários de Turno e Lembretes */}
                 <div className="space-y-4 p-5 bg-emerald-50 dark:bg-emerald-500/5 rounded-2xl border border-emerald-100 dark:border-emerald-500/10 shadow-sm shadow-emerald-500/5">
                     <h4 className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] flex items-center justify-between">
