@@ -245,7 +245,7 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 dark:border-slate-700 transition-colors">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
-             {initialLog ? <Edit3 className="text-indigo-500 dark:text-indigo-400" size={20} /> : <PlusCircle className="text-indigo-500 dark:text-indigo-400" size={20} />}
+             {initialLog ? <Edit3 className="text-emerald-500 dark:text-emerald-400" size={20} /> : <PlusCircle className="text-emerald-500 dark:text-emerald-400" size={20} />}
              {initialLog ? 'Editar Registro' : 'Adicionar Registro Manual'}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 p-2 rounded-xl transition-all">
@@ -264,7 +264,7 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium rounded-lg focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition-all p-2.5 dark:[color-scheme:dark]"
+              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-medium rounded-lg focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500 outline-none transition-all p-2.5 dark:[color-scheme:dark]"
               required
             />
           </div>
@@ -320,7 +320,7 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
             <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-bold transition-colors text-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
               Cancelar
             </button>
-            <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center gap-2 text-sm active:scale-95 shadow-md">
+            <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center gap-2 text-sm active:scale-95 shadow-md">
               <Save size={18} />
               {initialLog ? 'Salvar Alterações' : 'Salvar Registro'}
             </button>

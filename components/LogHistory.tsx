@@ -48,8 +48,8 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
             <button onClick={onAddManual} className="p-2.5 rounded-xl bg-white/40 dark:bg-white/5 hover:bg-white/60 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 border border-white/40 dark:border-white/10 transition-all shadow-sm active:scale-90"><PlusCircle size={20}/></button>
             {logs.length > 0 && (
               <>
-                <button onClick={onOpenReports} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95 group"><CalendarDays size={18} className="group-hover:rotate-12 transition-transform" /><span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">{t('label_reports_portal')}</span></button>
-                <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `ponto_backup_${new Date().toISOString().split('T')[0]}.json`); dl.click(); }} className="p-2.5 rounded-xl bg-white/40 dark:bg-white/5 text-slate-400 hover:text-indigo-500 border border-white/40 transition-all active:scale-90"><Download size={20}/></button>
+                <button onClick={onOpenReports} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 group"><CalendarDays size={18} className="group-hover:rotate-12 transition-transform" /><span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">{t('label_reports_portal')}</span></button>
+                <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `ponto_backup_${new Date().toISOString().split('T')[0]}.json`); dl.click(); }} className="p-2.5 rounded-xl bg-white/40 dark:bg-white/5 text-slate-400 hover:text-emerald-500 border border-white/40 transition-all active:scale-90"><Download size={20}/></button>
               </>
             )}
          </div>
@@ -71,10 +71,10 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                 key={entry.id} 
                 className={`group relative rounded-2xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden 
                   ${entry.id === currentLogId 
-                    ? 'bg-white/70 dark:bg-slate-800/70 border-indigo-200 dark:border-indigo-500/30 shadow-xl' 
+                    ? 'bg-white/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 shadow-xl shadow-emerald-500/5' 
                     : isHoliday 
                       ? 'bg-amber-50/40 dark:bg-amber-900/10 border-amber-200/60 dark:border-amber-500/20 shadow-lg shadow-amber-500/5'
-                      : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5'}`}
+                      : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5 shadow-sm'}`}
               >
                 {/* Holiday Decorative Element */}
                 {isHoliday && (
@@ -85,10 +85,10 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                   <div className="flex items-center gap-5">
                     <div className={`p-3.5 rounded-xl shadow-sm border transition-colors 
                       ${entry.id === currentLogId 
-                        ? 'bg-indigo-500 text-white border-indigo-400' 
+                        ? 'bg-emerald-500 text-white border-emerald-400' 
                         : isHoliday
                           ? 'bg-amber-500 text-white border-amber-400 shadow-md shadow-amber-500/20'
-                          : 'bg-white/80 dark:bg-slate-800/80 text-indigo-500 dark:text-indigo-400 border-white dark:border-slate-700'}`}
+                          : 'bg-white/80 dark:bg-slate-800/50 text-emerald-500 dark:text-emerald-400 border-white dark:border-white/10'}`}
                     >
                       {isHoliday ? <CalendarDays size={22}/> : <Calendar size={22}/>}
                     </div>
@@ -108,7 +108,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                         <ArrowRight size={14} className="opacity-30" />
                         {entry.endTime 
                           ? new Date(entry.endTime).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'}) 
-                          : <span className="text-indigo-500 animate-pulse italic">{t('label_open')}</span>}
+                          : <span className="text-emerald-500 animate-pulse italic">{t('label_open')}</span>}
                       </p>
                     </div>
                   </div>
@@ -126,7 +126,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-indigo-500 hover:bg-white transition-all shadow-sm">
+                      <button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-emerald-500 hover:bg-white transition-all shadow-sm">
                         <Edit3 size={18}/>
                       </button>
                       <button onClick={() => { if(confirm("Excluir este registro permanentemente?")) onDelete(entry.id); }} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-white transition-all shadow-sm">

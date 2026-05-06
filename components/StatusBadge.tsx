@@ -14,9 +14,9 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {
       dot: 'bg-slate-400 dark:bg-slate-500'
     },
     [WorkStatus.WORKING]: {
-      style: 'bg-indigo-50/80 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800/50',
+      style: 'bg-emerald-50/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50',
       label: label || 'Trabalhando',
-      dot: 'bg-indigo-500 animate-pulse'
+      dot: 'bg-emerald-500 animate-pulse'
     },
     [WorkStatus.ON_LUNCH]: {
       style: 'bg-amber-50/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800/50',

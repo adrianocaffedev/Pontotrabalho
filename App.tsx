@@ -46,8 +46,8 @@ const generateId = () => {
 
 const Signature = () => (
     <div className="flex justify-center mt-8 animate-in fade-in slide-in-from-bottom-2 duration-1000 delay-500">
-        <div className="inline-flex items-center gap-3 px-5 py-2 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900/50 group cursor-default">
-            <span className="text-indigo-600 dark:text-indigo-400 font-bold tracking-tighter text-sm">{"</>"}</span>
+        <div className="inline-flex items-center gap-3 px-5 py-2 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-900/50 group cursor-default">
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold tracking-tighter text-sm">{"</>"}</span>
             <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-[0.2em]">Por Adriano Caffé</span>
         </div>
     </div>
@@ -57,7 +57,7 @@ const StatCard = ({ icon: Icon, label, value, subValue, active, colorClass, dela
     <div 
         className={`relative overflow-hidden p-4 sm:p-6 rounded-xl border backdrop-blur-xl transition-all duration-500 group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards
         ${active 
-            ? 'bg-white/80 dark:bg-slate-800/60 border-indigo-200 dark:border-indigo-500/30 shadow-lg shadow-indigo-500/10' 
+            ? 'bg-white/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 shadow-lg shadow-emerald-500/10' 
             : 'bg-white/30 dark:bg-slate-900/30 border-white/40 dark:border-white/5 hover:bg-white/50 dark:hover:bg-slate-800/40 hover:border-white/60 dark:hover:border-slate-700 hover:-translate-y-1 hover:shadow-lg'}
         `}
         style={{ animationDelay: `${delay}ms` }}
@@ -70,7 +70,7 @@ const StatCard = ({ icon: Icon, label, value, subValue, active, colorClass, dela
                 <Icon size={12} className="sm:w-3.5 sm:h-3.5" /> {label}
             </p>
             <div className="flex flex-col gap-0.5">
-                <span className={`text-2xl sm:text-3xl font-bold tracking-tighter ${active ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-200'}`}>
+                <span className={`text-2xl sm:text-3xl font-bold tracking-tighter ${active ? 'text-emerald-600 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-200'}`}>
                     {value}
                 </span>
                 {subValue && (
@@ -81,7 +81,7 @@ const StatCard = ({ icon: Icon, label, value, subValue, active, colorClass, dela
             </div>
         </div>
         {active && (
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-violet-500 opacity-60"></div>
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-60"></div>
         )}
     </div>
 );
@@ -540,10 +540,10 @@ const App: React.FC = () => {
         <div className={`min-h-screen flex flex-col items-center justify-center p-6 transition-colors duration-500 ${theme === 'dark' ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
             <div className="max-w-lg w-full animate-in zoom-in-95 duration-500">
                 <div className="text-center mb-10">
-                    <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-500/30 ring-4 ring-white/10">
+                    <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/30 ring-4 ring-white/10">
                         <ClockIcon size={40} className="text-white" />
                     </div>
-                    <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight mb-2">Ponto<span className="text-indigo-600">Inteligente</span></h1>
+                    <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight mb-2">Ponto<span className="text-emerald-500">Inteligente</span></h1>
                     <p className="text-slate-500 dark:text-slate-400 font-medium">Controle de jornada seguro</p>
                 </div>
 
@@ -562,18 +562,18 @@ const App: React.FC = () => {
                                     onChange={e => { setSearchName(e.target.value); setShowSuggestions(true); setSelectedLoginUser(null); }}
                                     onFocus={() => setShowSuggestions(true)}
                                     placeholder="Comece a digitar seu nome..."
-                                    className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-all text-lg"
+                                    className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-all text-lg"
                                 />
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" size={20} />
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors" size={20} />
                                 {showSuggestions && searchName && filteredSuggestions.length > 0 && (
                                     <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                                         {filteredSuggestions.map(user => (
                                             <button 
                                                 key={user.id} 
                                                 onClick={() => { setSearchName(user.name); setSelectedLoginUser(user); setShowSuggestions(false); setPinBuffer(''); }}
-                                                className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700 border-b last:border-0 border-slate-100 dark:border-slate-700 transition-colors"
+                                                className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-emerald-500/10 border-b last:border-0 border-slate-100 dark:border-slate-700 transition-colors"
                                             >
-                                                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center font-bold text-[10px] uppercase">{user.name.substring(0,2)}</div>
+                                                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center font-bold text-[10px] uppercase">{user.name.substring(0,2)}</div>
                                                 <div className="text-left flex-1">
                                                     <p className="font-bold text-slate-800 dark:text-white text-sm leading-tight">{user.name}</p>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase">{user.company}</p>
@@ -594,7 +594,7 @@ const App: React.FC = () => {
                             
                             <div className="flex justify-center gap-4 mb-6">
                                 {[0, 1, 2, 3].map(i => (
-                                    <div key={i} className={`w-5 h-5 rounded-full border-2 transition-all duration-300 ${pinBuffer.length > i ? 'bg-indigo-500 border-indigo-500 scale-125 shadow-lg shadow-indigo-500/40' : 'border-slate-200 dark:border-slate-700'} ${pinError ? 'bg-rose-500 border-rose-500 animate-shake' : ''}`}></div>
+                                    <div key={i} className={`w-5 h-5 rounded-full border-2 transition-all duration-300 ${pinBuffer.length > i ? 'bg-emerald-500 border-emerald-500 scale-125 shadow-lg shadow-emerald-500/40' : 'border-slate-200 dark:border-slate-700'} ${pinError ? 'bg-rose-500 border-rose-500 animate-shake' : ''}`}></div>
                                 ))}
                             </div>
 
@@ -608,7 +608,7 @@ const App: React.FC = () => {
                                             else handlePinInput(key.toString());
                                         }}
                                         className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl transition-all shadow-sm border
-                                            ${key === '' ? 'opacity-0 pointer-events-none' : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white border-slate-100/50 dark:border-slate-700/50 hover:bg-indigo-600 hover:text-white active:scale-90 hover:shadow-indigo-500/20'}
+                                            ${key === '' ? 'opacity-0 pointer-events-none' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-800 dark:text-white border-slate-100/50 dark:border-slate-700/50 hover:bg-emerald-600 hover:text-white active:scale-90 hover:shadow-emerald-500/20'}
                                         `}
                                     >
                                         {key === '←' ? <Delete size={20} /> : key}
@@ -621,7 +621,7 @@ const App: React.FC = () => {
                     <div className="mt-8 pt-6 border-t dark:border-slate-800 flex justify-center">
                         <button 
                             onClick={() => setIsSettingsOpen(true)} 
-                            className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-500 hover:text-white transition-all shadow-sm active:scale-90"
+                            className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-slate-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90"
                             title="Configurações Admin"
                         >
                             <SettingsIcon size={20} />
@@ -636,20 +636,20 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 font-sans selection:bg-indigo-500/20 ${theme === 'dark' ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
+    <div className={`min-h-screen transition-colors duration-500 font-sans selection:bg-emerald-500/20 ${theme === 'dark' ? 'dark bg-slate-950 text-slate-200' : 'bg-slate-50 text-slate-900'}`}>
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-500/10 dark:bg-indigo-600/10 rounded-full blur-[100px] animate-pulse"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-500/10 dark:bg-violet-600/10 rounded-full blur-[120px]"></div>
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/10 dark:bg-emerald-600/10 rounded-full blur-[100px] animate-pulse"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-teal-500/10 dark:bg-teal-600/10 rounded-full blur-[120px]"></div>
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col min-h-screen">
         <header className="flex flex-col sm:flex-row justify-between items-center mb-8 sm:mb-12 gap-6">
           <div className="flex items-center gap-3">
-             <div className="bg-white dark:bg-slate-800 p-2 sm:p-3 rounded-full shadow-lg border border-slate-100 dark:border-slate-700 shadow-indigo-500/5">
-                <ClockIcon size={24} className="text-indigo-600 dark:text-indigo-400" />
+             <div className="bg-white dark:bg-slate-800/50 p-2 sm:p-3 rounded-full shadow-lg border border-slate-100 dark:border-white/10 shadow-emerald-500/5">
+                <ClockIcon size={24} className="text-emerald-600 dark:text-emerald-400" />
              </div>
              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Ponto<span className="text-indigo-600">Inteligente</span></h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Ponto<span className="text-emerald-500">Inteligente</span></h1>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{activeUser?.company || 'Sistema de Ponto'}</p>
              </div>
           </div>
@@ -658,7 +658,7 @@ const App: React.FC = () => {
              {deferredPrompt && (
                 <button 
                   onClick={handleInstallClick} 
-                  className="flex items-center gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
+                  className="flex items-center gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
                   title="Instalar Aplicação"
                 >
                    <Download size={16} /> <span>Instalar App</span>
@@ -671,13 +671,13 @@ const App: React.FC = () => {
              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-b-2 border-rose-200 dark:border-rose-900/50 active:border-b-0 active:translate-y-[2px] text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
                 <LogOut size={16} /> <span className="hidden sm:inline">Sair</span>
              </button>
-             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-full bg-indigo-500 text-white shadow-[0_4px_0_0_#312e81] active:shadow-none active:translate-y-[4px] transition-all" title="Relatórios"><TrendingUp size={18}/></button>
+             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-full bg-emerald-500 text-white shadow-[0_4px_0_0_#065f46] active:shadow-none active:translate-y-[4px] transition-all" title="Relatórios"><TrendingUp size={18}/></button>
              <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-full bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:shadow-none active:translate-y-[4px] shadow-[0_4px_0_0_#0f172a] dark:shadow-[0_4px_0_0_#cbd5e1] transition-all" title="Configurações"><SettingsIcon size={18}/></button>
           </div>
         </header>
 
         {isLoadingData ? (
-            <div className="flex-1 flex items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>
+            <div className="flex-1 flex items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>
         ) : (
             <main className="flex-1 space-y-8 animate-in fade-in duration-700">
                 <div className="flex flex-col items-center relative">
@@ -694,7 +694,7 @@ const App: React.FC = () => {
                     <div className="mt-8 flex items-center gap-6">
                         {status === WorkStatus.IDLE || status === WorkStatus.FINISHED ? (
                             <div className="flex flex-col items-center gap-6">
-                                <button onClick={handleStartWork} className="w-28 h-28 rounded-full bg-indigo-600 text-white shadow-[0_8px_0_0_#312e81] shadow-indigo-900/50 flex items-center justify-center hover:bg-indigo-500 active:shadow-none active:translate-y-[8px] transition-all relative group">
+                                <button onClick={handleStartWork} className="w-28 h-28 rounded-full bg-emerald-600 text-white shadow-[0_8px_0_0_#065f46] shadow-emerald-900/50 flex items-center justify-center hover:bg-emerald-500 active:shadow-none active:translate-y-[8px] transition-all relative group">
                                     <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
                                     <Play size={36} className="ml-1 fill-current" />
                                 </button>
@@ -723,9 +723,9 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatCard icon={Timer} label={t('label_worked')} value={`${String(workedHours).padStart(2, '0')}:${String(workedMinutes).padStart(2, '0')}:${String(workedSeconds).padStart(2, '0')}`} active={status !== WorkStatus.IDLE} colorClass="text-indigo-500" />
+                    <StatCard icon={Timer} label={t('label_worked')} value={`${String(workedHours).padStart(2, '0')}:${String(workedMinutes).padStart(2, '0')}:${String(workedSeconds).padStart(2, '0')}`} active={status !== WorkStatus.IDLE} colorClass="text-emerald-500" />
                     <StatCard icon={Users} label={t('label_user')} value={activeUser?.name.split(' ')[0]} subValue={activeUser?.company} colorClass="text-slate-500" />
-                    <StatCard icon={DollarSign} label={t('label_hourly_val')} value={`${currencySymbol} ${settings.hourlyRate.toFixed(2)}`} colorClass="text-emerald-500" />
+                    <StatCard icon={DollarSign} label={t('label_hourly_val')} value={`${currencySymbol} ${settings.hourlyRate.toFixed(2)}`} colorClass="text-teal-500" />
                     <StatCard icon={Utensils} label={t('label_meal_allowance')} value={`${currencySymbol} ${settings.foodAllowance.toFixed(2)}`} colorClass="text-orange-500" />
                 </div>
                 

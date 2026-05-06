@@ -281,7 +281,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const cur = currencySymbol;
 
         doc.setFontSize(20);
-        doc.setTextColor(79, 70, 229);
+        doc.setTextColor(16, 185, 129);
         doc.text(`Ponto Inteligente - ${t('report_title')}`, 14, 20);
         
         doc.setFontSize(9);
@@ -311,7 +311,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             body: rows,
             startY: 40,
             theme: 'grid',
-            headStyles: { fillColor: [79, 70, 229] },
+            headStyles: { fillColor: [16, 185, 129] },
             styles: { fontSize: 8 }
         });
 
@@ -360,7 +360,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         doc.text(`(-) ${cur} ${reportStats.irsDiscount.toFixed(2)}`, 100, currentY + 19, { align: 'right' });
 
         doc.setFontSize(12);
-        doc.setTextColor(79, 70, 229);
+        doc.setTextColor(16, 185, 129);
         doc.text("LÍQUIDO A RECEBER:", 14, currentY + 28);
         doc.text(`${cur} ${reportStats.netTotal.toFixed(2)}`, 100, currentY + 28, { align: 'right' });
 
@@ -389,7 +389,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-6 border-b border-white/5 bg-slate-900/50">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
                             <TrendingUp size={20} className="text-white" />
                         </div>
                         <div>
@@ -413,7 +413,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     <select 
                                         value={selectedUserId} 
                                         onChange={(e) => setSelectedUserId(e.target.value)}
-                                        className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none transition-all"
+                                        className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none transition-all"
                                     >
                                         <option value="">Selecione...</option>
                                         {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -430,7 +430,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     type="date" 
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all w-full [color-scheme:dark]"
+                                    className="bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all w-full [color-scheme:dark]"
                                 />
                             </div>
                         </div>
@@ -443,7 +443,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     type="date" 
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all w-full [color-scheme:dark]"
+                                    className="bg-slate-800 border border-slate-700 text-white rounded-xl py-2.5 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all w-full [color-scheme:dark]"
                                 />
                             </div>
                         </div>
@@ -452,7 +452,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                             <button 
                                 onClick={fetchData}
                                 disabled={loading || !selectedUserId}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:grayscale"
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:grayscale"
                             >
                                 {loading ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
                                 {/* <span className="hidden lg:inline">Atualizar</span> */}
@@ -462,10 +462,10 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
 
                     <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         <span className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em] whitespace-nowrap mr-2">Filtros Rápidos:</span>
-                        <button onClick={() => setPresetPeriod('today')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Hoje</button>
-                        <button onClick={() => setPresetPeriod('thisWeek')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Esta Semana</button>
-                        <button onClick={() => setPresetPeriod('thisMonth')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Atual</button>
-                        <button onClick={() => setPresetPeriod('lastMonth')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-indigo-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Passado</button>
+                        <button onClick={() => setPresetPeriod('today')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-emerald-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Hoje</button>
+                        <button onClick={() => setPresetPeriod('thisWeek')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-emerald-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Esta Semana</button>
+                        <button onClick={() => setPresetPeriod('thisMonth')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-emerald-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Atual</button>
+                        <button onClick={() => setPresetPeriod('lastMonth')} className="px-4 py-1.5 rounded-xl bg-white/5 hover:bg-emerald-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Passado</button>
                     </div>
                 </div>
 
@@ -473,7 +473,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                            <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
+                            <Loader2 className="animate-spin text-emerald-500 mb-4" size={48} />
                             <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">{getTranslation(settingsMap[selectedUserId]?.language || 'pt-PT', 'label_processing')}</p>
                         </div>
                     ) : !selectedUserId ? (
@@ -486,8 +486,8 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                             
                             {/* Stats Summary Bento Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/5 p-6 rounded-2xl border border-indigo-500/10">
-                                    <div className="flex items-center gap-2 text-indigo-400 mb-2">
+                                <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 rounded-2xl border border-emerald-500/10">
+                                    <div className="flex items-center gap-2 text-emerald-400 mb-2">
                                         <Clock size={16} />
                                         <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_total_hours')}</span>
                                     </div>
@@ -522,13 +522,13 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     <p className="text-[10px] text-slate-500 mt-1">Seg. Social + IRS</p>
                                 </div>
 
-                                <div className="bg-indigo-600 p-6 rounded-2xl border border-indigo-400/20 shadow-xl shadow-indigo-600/20">
-                                    <div className="flex items-center gap-2 text-indigo-100 mb-2">
+                                <div className="bg-emerald-600 p-6 rounded-2xl border border-emerald-400/20 shadow-xl shadow-emerald-600/20">
+                                    <div className="flex items-center gap-2 text-emerald-100 mb-2">
                                         <DollarSign size={16} />
                                         <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_net_value')}</span>
                                     </div>
                                     <p className="text-3xl font-black text-white">{currency} {(reportStats?.netTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
-                                    <p className="text-[10px] text-indigo-200 mt-1">Líquido a receber em conta</p>
+                                    <p className="text-[10px] text-emerald-200 mt-1">Líquido a receber em conta</p>
                                 </div>
                             </div>
 
@@ -542,8 +542,8 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
                                         <div>
                                             <h3 className="text-xl font-black text-white flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                                                    <Calculator className="text-indigo-400" size={20} />
+                                                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                                                    <Calculator className="text-emerald-400" size={20} />
                                                 </div>
                                                 {t('label_salary_receipt')}
                                             </h3>
@@ -563,7 +563,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                         {/* Remunerações */}
                                         <div className="space-y-6">
                                             <div>
-                                                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                                <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                                                     <TrendingUp size={12} /> 01. Rendimentos Brutos
                                                 </h4>
                                                 
@@ -636,18 +636,18 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                     </div>
 
                                                     <div className="pt-8 border-t border-white/5">
-                                                        <div className="bg-indigo-600/10 rounded-[1.5rem] p-6 border border-indigo-500/20 relative overflow-hidden group">
+                                                        <div className="bg-emerald-600/10 rounded-[1.5rem] p-6 border border-emerald-500/20 relative overflow-hidden group">
                                                             <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10 group-hover:scale-110 transition-transform">
                                                                 <DollarSign size={80} />
                                                             </div>
                                                             <div className="relative z-10">
-                                                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-1 block">Valor Líquido Final</span>
+                                                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-1 block">Valor Líquido Final</span>
                                                                 <div className="flex items-baseline gap-2">
                                                                     <span className="text-4xl font-black text-white tabular-nums tracking-tighter">
                                                                         {currency} {reportStats?.netTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}
                                                                     </span>
                                                                 </div>
-                                                                <p className="text-[9px] text-indigo-300/40 font-bold uppercase tracking-widest mt-2">Valor disponível para transferência</p>
+                                                                <p className="text-[9px] text-emerald-300/40 font-bold uppercase tracking-widest mt-2">Valor disponível para transferência</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -713,7 +713,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
-                                                                <div className="flex items-center gap-2 text-indigo-400 font-mono text-sm font-bold">
+                                                                <div className="flex items-center gap-2 text-emerald-400 font-mono text-sm font-bold">
                                                                     <Clock size={12} className="opacity-40" />
                                                                     {new Date(log.start_time).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
                                                                 </div>
@@ -785,7 +785,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 {/* Footer Actions */}
                 <div className="px-6 py-6 bg-slate-900 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 italic max-w-xs">
-                        <Calculator size={14} className="text-indigo-400 shrink-0" /> Valores baseados nas taxas atuais de SS ({settingsMap[selectedUserId]?.socialSecurityRate || 11}%) e IRS ({settingsMap[selectedUserId]?.irsRate || 0}%)
+                        <Calculator size={14} className="text-emerald-400 shrink-0" /> Valores baseados nas taxas atuais de SS ({settingsMap[selectedUserId]?.socialSecurityRate || 11}%) e IRS ({settingsMap[selectedUserId]?.irsRate || 0}%)
                     </p>
                     <button 
                         onClick={handleExportPDF}

@@ -26,7 +26,7 @@ const Clock: React.FC = () => {
       
       <div className="mt-2 md:mt-4">
         <div className="text-slate-500 dark:text-slate-400 font-medium text-sm md:text-lg flex items-center gap-2 uppercase tracking-wide">
-          <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500"></span>
+          <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500"></span>
           {time.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
         </div>
       </div>

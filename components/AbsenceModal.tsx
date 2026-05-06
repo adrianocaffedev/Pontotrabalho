@@ -137,21 +137,21 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
         <div className="flex px-6 pt-4 gap-4 border-b border-gray-50 dark:border-slate-800/50">
           <button 
             onClick={() => { setActiveTab('NEW'); setEditingId(null); resetForm(); }}
-            className={`pb-3 px-2 text-xs font-bold uppercase tracking-widest transition-all relative ${activeTab === 'NEW' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`pb-3 px-2 text-xs font-bold uppercase tracking-widest transition-all relative ${activeTab === 'NEW' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <div className="flex items-center gap-2">
               <PlusCircle size={14} /> {editingId ? 'Editar Justificativa' : 'Nova Justificativa'}
             </div>
-            {activeTab === 'NEW' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full"></div>}
+            {activeTab === 'NEW' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 dark:bg-emerald-400 rounded-t-full"></div>}
           </button>
           <button 
             onClick={() => setActiveTab('HISTORY')}
-            className={`pb-3 px-2 text-xs font-bold uppercase tracking-widest transition-all relative ${activeTab === 'HISTORY' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`pb-3 px-2 text-xs font-bold uppercase tracking-widest transition-all relative ${activeTab === 'HISTORY' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 hover:text-slate-600'}`}
           >
             <div className="flex items-center gap-2">
               <History size={14} /> Histórico ({existingAbsences.length})
             </div>
-            {activeTab === 'HISTORY' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full"></div>}
+            {activeTab === 'HISTORY' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 dark:bg-emerald-400 rounded-t-full"></div>}
           </button>
         </div>
         
@@ -187,7 +187,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
               </div>
 
               {/* Justificativa */}
-              <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 focus-within:border-indigo-200 dark:focus-within:border-indigo-800 transition-all">
+              <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 transition-all">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                   <FileText size={12} className="text-slate-400"/>
                   Justificativa / Observação
@@ -238,7 +238,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 hover:shadow-lg transition-all flex items-center gap-2 text-xs uppercase tracking-widest active:scale-95 shadow-md shadow-indigo-500/20 disabled:opacity-50"
+                  className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 hover:shadow-lg transition-all flex items-center gap-2 text-xs uppercase tracking-widest active:scale-95 shadow-md shadow-emerald-500/20 disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                   {editingId ? 'Atualizar Justificativa' : 'Salvar Justificativa'}
@@ -279,7 +279,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => handleEdit(abs)}
-                          className="p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                          className="p-2 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"
                           title="Editar"
                         >
                           <Edit3 size={14} />
