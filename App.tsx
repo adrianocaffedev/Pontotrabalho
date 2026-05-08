@@ -740,6 +740,7 @@ const App: React.FC = () => {
                     onOpenReports={() => setIsReportsOpen(true)}
                     currentLogId={currentLogId} 
                     standaloneAbsences={standaloneAbsences}
+                    todayDate={getLocalDateString(now)}
                 />
             </main>
         )}

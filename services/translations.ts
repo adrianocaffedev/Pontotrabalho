@@ -74,7 +74,15 @@ export const translations = {
     notif_lunch_end_title: 'Bom regresso!',
     notif_lunch_end_body: 'Não se esqueça de retomar a jornada após o almoço.',
     notif_clock_out_title: 'Fim da jornada!',
-    notif_clock_out_body: 'Está na hora de encerrar o dia. Bom descanso!'
+    notif_clock_out_body: 'Está na hora de encerrar o dia. Bom descanso!',
+    label_goal: 'Meta',
+    label_shift: 'Turno',
+    btn_view_config: 'Ver Configurações',
+    label_scheduled: 'Previsto',
+    label_recorded: 'Registrado',
+    label_entry: 'Entrada',
+    label_exit: 'Saída',
+    label_return: 'Retorno'
   },
   'pt-PT': {
     status_idle: 'Disponível',
@@ -150,7 +158,15 @@ export const translations = {
     notif_lunch_end_title: 'Bom regresso!',
     notif_lunch_end_body: 'Não se esqueça de retomar a jornada após o almoço.',
     notif_clock_out_title: 'Fim da jornada!',
-    notif_clock_out_body: 'Está na hora de encerrar o dia. Bom descanso!'
+    notif_clock_out_body: 'Está na hora de encerrar o dia. Bom descanso!',
+    label_goal: 'Meta',
+    label_shift: 'Turno',
+    btn_view_config: 'Ver Configurações',
+    label_scheduled: 'Previsto',
+    label_recorded: 'Registado',
+    label_entry: 'Entrada',
+    label_exit: 'Saída',
+    label_return: 'Retorno'
   },
   'en': {
     status_idle: 'Idle',
@@ -226,7 +242,15 @@ export const translations = {
     notif_lunch_end_title: 'Back to work!',
     notif_lunch_end_body: "Don't forget to clock back in from lunch.",
     notif_clock_out_title: 'End of shift!',
-    notif_clock_out_body: 'Time to clock out and rest.'
+    notif_clock_out_body: 'Time to clock out and rest.',
+    label_goal: 'Goal',
+    label_shift: 'Shift',
+    btn_view_config: 'View Settings',
+    label_scheduled: 'Scheduled',
+    label_recorded: 'Recorded',
+    label_entry: 'Entry',
+    label_exit: 'Exit',
+    label_return: 'Return'
   }
 };
 

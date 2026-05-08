@@ -14,13 +14,15 @@ interface LogHistoryProps {
   onAddManual: () => void;
   onOpenReports: () => void;
   currentLogId: string | null;
+  todayDate?: string;
 }
 
 const ITEMS_PER_PAGE = 3;
 
-const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user, settings, systemHolidays, onDelete, onEdit, onAddManual, onOpenReports, currentLogId }) => {
+const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user, settings, systemHolidays, onDelete, onEdit, onAddManual, onOpenReports, currentLogId, todayDate }) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [showConfigId, setShowConfigId] = useState<string | null>(null);
 
   const t = (key: TranslationKey) => getTranslation(settings.language || 'pt-PT', key);
   
@@ -65,17 +67,26 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
           visibleHistory.map((entry) => {
             const isHoliday = entry.entryType === 'log' && 
                              [...(settings.holidays || []), ...systemHolidays].includes((entry as TimeLog).date);
+            
+            const isToday = entry.date === todayDate;
 
             return entry.entryType === 'log' ? (
               <div 
                 key={entry.id} 
                 className={`group relative rounded-2xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden 
-                  ${entry.id === currentLogId 
-                    ? 'bg-white/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 shadow-xl shadow-emerald-500/5' 
-                    : isHoliday 
-                      ? 'bg-amber-50/40 dark:bg-amber-900/10 border-amber-200/60 dark:border-amber-500/20 shadow-lg shadow-amber-500/5'
-                      : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5 shadow-sm'}`}
+                  ${isToday
+                    ? 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-300/50 dark:border-emerald-500/40 shadow-xl shadow-emerald-500/10 ring-1 ring-emerald-500/20' 
+                    : entry.id === currentLogId 
+                      ? 'bg-white/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 shadow-xl shadow-emerald-500/5' 
+                      : isHoliday 
+                        ? 'bg-amber-50/40 dark:bg-amber-900/10 border-amber-200/60 dark:border-amber-500/20 shadow-lg shadow-amber-500/5'
+                        : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5 shadow-sm'}`}
               >
+                {/* Visual indicator for today */}
+                {isToday && (
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500 animate-pulse"></div>
+                )}
+
                 {/* Holiday Decorative Element */}
                 {isHoliday && (
                   <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 blur-2xl rounded-full pointer-events-none"></div>
@@ -84,19 +95,26 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
                   <div className="flex items-center gap-5">
                     <div className={`p-3.5 rounded-xl shadow-sm border transition-colors 
-                      ${entry.id === currentLogId 
-                        ? 'bg-emerald-500 text-white border-emerald-400' 
-                        : isHoliday
-                          ? 'bg-amber-500 text-white border-amber-400 shadow-md shadow-amber-500/20'
-                          : 'bg-white/80 dark:bg-slate-800/50 text-emerald-500 dark:text-emerald-400 border-white dark:border-white/10'}`}
+                      ${isToday
+                        ? 'bg-emerald-600 text-white border-emerald-500 ring-4 ring-emerald-500/10'
+                        : entry.id === currentLogId 
+                          ? 'bg-emerald-500 text-white border-emerald-400' 
+                          : isHoliday
+                            ? 'bg-amber-500 text-white border-amber-400 shadow-md shadow-amber-500/20'
+                            : 'bg-white/80 dark:bg-slate-800/50 text-emerald-500 dark:text-emerald-400 border-white dark:border-white/10'}`}
                     >
                       {isHoliday ? <CalendarDays size={22}/> : <Calendar size={22}/>}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isHoliday ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-emerald-600 dark:text-emerald-400' : isHoliday ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
                           {entry.date.split('-').reverse().join('/')}
                         </p>
+                        {isToday && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[8px] font-black tracking-tighter uppercase border border-emerald-200 dark:border-emerald-500/30">
+                            {t('label_today')}
+                          </span>
+                        )}
                         {isHoliday && (
                           <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[8px] font-black tracking-tighter uppercase border border-amber-200 dark:border-amber-500/30">
                             {t('label_holiday')}
@@ -115,17 +133,28 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                   <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
                     <div className="flex flex-col items-end">
                       <span className={`font-mono font-black px-4 py-2 rounded-xl text-base border shadow-sm 
-                        ${isHoliday 
-                          ? 'text-amber-700 dark:text-amber-200 bg-amber-100/60 dark:bg-amber-900/40 border-amber-200/50 dark:border-amber-700/50' 
-                          : 'text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-slate-800/60 border-white/60 dark:border-slate-700/50'}`}
+                        ${isToday
+                          ? 'text-emerald-700 dark:text-emerald-300 bg-white/80 dark:bg-emerald-900/40 border-emerald-200/50 dark:border-emerald-700/50'
+                          : isHoliday 
+                            ? 'text-amber-700 dark:text-amber-200 bg-amber-100/60 dark:bg-amber-900/40 border-amber-200/50 dark:border-amber-700/50' 
+                            : 'text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-slate-800/60 border-white/60 dark:border-slate-700/50'}`}
                       >
                         {calculateDurationStr(entry.totalDurationMs)}
                       </span>
-                      <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 mr-1 ${isHoliday ? 'text-amber-500' : 'text-slate-400'}`}>
+                      <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 mr-1 ${isToday ? 'text-emerald-500' : isHoliday ? 'text-amber-500' : 'text-slate-400'}`}>
                         {t('label_total_time')}
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      {isToday && (
+                        <button 
+                          onClick={() => setShowConfigId(showConfigId === entry.id ? null : entry.id)} 
+                          className={`p-3 rounded-xl transition-all shadow-sm ${showConfigId === entry.id ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'}`}
+                          title={t('btn_view_config')}
+                        >
+                          <Clock size={18} />
+                        </button>
+                      )}
                       <button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-emerald-500 hover:bg-white transition-all shadow-sm">
                         <Edit3 size={18}/>
                       </button>
@@ -135,6 +164,77 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                     </div>
                   </div>
                 </div>
+
+                {/* Inline config display */}
+                {isToday && showConfigId === entry.id && (
+                  <div className="pt-6 border-t border-emerald-100 dark:border-emerald-900/50 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/50">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-1">{t('label_goal')}</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{settings.dailyWorkHours}h {t('label_worked')}</p>
+                      </div>
+                      <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/50">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-1">{t('label_shift')}</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{settings.shiftStart} — {settings.shiftEnd}</p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-emerald-50/30 dark:bg-emerald-900/10">
+                            <th className="px-4 py-2 text-[8px] font-black uppercase tracking-wider text-emerald-600/70">{t('settings_general')}</th>
+                            <th className="px-4 py-2 text-[8px] font-black uppercase tracking-wider text-emerald-600/70 text-right">{t('label_recorded')}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-100/50 dark:divide-emerald-900/30">
+                          {/* Entrada */}
+                          <tr>
+                            <td className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('label_entry')}</td>
+                            <td className="px-4 py-2.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-right">
+                              {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                          </tr>
+                          
+                          {/* Todas as Pausas (Almoço e Café) */}
+                          {entry.breaks.map((brk, idx) => (
+                            <React.Fragment key={brk.id}>
+                              <tr>
+                                <td className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                                  {brk.type === 'LUNCH' ? t('status_lunch') : t('status_coffee')} (↑)
+                                </td>
+                                <td className="px-4 py-2.5 font-mono font-bold text-amber-600 dark:text-amber-400 text-right">
+                                  {new Date(brk.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-tighter pl-6">
+                                  {t('label_return')}
+                                </td>
+                                <td className="px-4 py-2.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-right border-l-0">
+                                  {brk.endTime 
+                                    ? new Date(brk.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                    : '--:--'}
+                                </td>
+                              </tr>
+                            </React.Fragment>
+                          ))}
+
+                          {/* Saída */}
+                          <tr>
+                            <td className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('label_exit')}</td>
+                            <td className="px-4 py-2.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-right">
+                              {entry.endTime 
+                                ? new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                : <span className="animate-pulse italic opacity-50">{t('label_open')}</span>}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {entry.absences && entry.absences.length > 0 && (
                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 relative z-10">
                       {entry.absences.map(a => (

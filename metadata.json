@@ -1,6 +1,6 @@
 {
-  "name": "PontoInteligente AI",
-  "description": "Sistema de controle de ponto inteligente com análise de produtividade via Gemini AI. Registre entrada, almoço e saída e receba insights sobre sua jornada.",
+  "name": "PontoInteligente",
+  "description": "Sistema de controle de ponto inteligente. Registre entrada, almoço e saída, acompanhe sua jornada em tempo real e gere relatórios detalhados.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
