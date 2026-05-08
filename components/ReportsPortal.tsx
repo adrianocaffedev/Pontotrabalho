@@ -140,83 +140,89 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
     };
 
     const reportStats = useMemo(() => {
-        const userSettings = settingsMap[selectedUserId] || { dailyWorkHours: 8, hourlyRate: 0, foodAllowance: 0, overtimePercentage: 25, socialSecurityRate: 11, irsRate: 0, language: 'pt-PT', currency: 'EUR' };
+        const userSettings = settingsMap[selectedUserId] || { dailyWorkHours: 8, hourlyRate: 0, foodAllowance: 0, overtimePercentage: 25, socialSecurityRate: 11, irsRate: 0, language: 'pt-PT', currency: 'EUR', overtimeDays: [0, 6] };
         const user = users.find(u => u.id === selectedUserId);
         if (!userSettings && !user) return null;
 
+        // Rounding helper to ensure consistency
+        const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+
         let totalDurationMs = 0;
-        let currentBasePay = 0;
+        let totalBasePay = 0;
         let totalExtraMs = 0;
+        let totalExtraPay = 0;
         let daysWorkedCount = logs.length;
         let lunchAllowanceTotalResult = 0;
 
         logs.forEach(log => {
-            const logDurationMs = Number(log.total_duration_ms);
+            const logDurationMs = Number(log.total_duration_ms) || 0;
             totalDurationMs += logDurationMs;
             
+            const logDate = new Date(log.date + 'T12:00:00'); // Force midday to avoid TZ issues
+            const dayOfWeek = logDate.getDay();
             const isHoliday = [...(userSettings.holidays || []), ...systemHolidays].includes(log.date);
+            const isOvertimeDay = (userSettings.overtimeDays || []).includes(dayOfWeek);
+            
             const hours = logDurationMs / 3600000;
+            const expectedMs = (userSettings.dailyWorkHours || 8) * 3600000;
 
-            if (isHoliday) {
-                // Feriado: Paga 100% extra (x2)
-                currentBasePay += hours * (userSettings.hourlyRate * 2);
+            // 1. Base Pay Calculation
+            if (isHoliday || isOvertimeDay) {
+                // Days like Sundays or Holidays usually pay 100% extra in many PT contracts (effectively x2)
+                // Or follow a specific overtime rule. Here we treat them as fully extra or special.
+                const dayPay = hours * (userSettings.hourlyRate * 2);
+                totalBasePay += dayPay;
             } else {
-                currentBasePay += hours * userSettings.hourlyRate;
+                totalBasePay += hours * userSettings.hourlyRate;
+                
+                // 2. Daily Overtime (Only on regular days, as special days are already x2)
+                if (logDurationMs > expectedMs) {
+                    const extraMs = logDurationMs - expectedMs;
+                    totalExtraMs += extraMs;
+                    const extraHours = extraMs / 3600000;
+                    // Overtime pay is the EXTRA percentage on top of the already paid base
+                    totalExtraPay += extraHours * (userSettings.hourlyRate * (userSettings.overtimePercentage / 100));
+                }
             }
             
-            // Cálculo de horas extras (simplificado para o relatório)
-            const expectedMs = userSettings.dailyWorkHours * 3600000;
-            if (log.total_duration_ms > expectedMs) {
-                totalExtraMs += (log.total_duration_ms - expectedMs);
-            }
-            
-            // Subsídio de almoço
-            if (log.total_duration_ms > 0) {
-                lunchAllowanceTotalResult += userSettings.foodAllowance;
+            // 3. Lunch Allowance
+            if (logDurationMs > 0) {
+                lunchAllowanceTotalResult += (userSettings.foodAllowance || 0);
             }
         });
 
         const totalHours = totalDurationMs / 3600000;
         const totalExtraHours = totalExtraMs / 3600000;
         
-        const basePay = currentBasePay;
-        const extraPay = totalExtraHours * (userSettings.hourlyRate * (userSettings.overtimePercentage / 100));
-        
-        // --- NOVOS CÁLCULOS (DUODÉCIMOS E PORTUGAL) ---
         const isTemporary = user?.contractType === 'TEMPORARY';
         let duodecimoFerias = 0;
         let duodecimoNatal = 0;
-        let businessDays = getBusinessDaysInMonth(startDate);
         
-        // Se o usuário tiver configurado uma taxa horária baseada em 920€ (ex: 5.31€/h)
-        // O basePay aqui será o proporcional às horas registradas.
+        const basePay = round(totalBasePay);
+        const extraPay = round(totalExtraPay);
         
         if (isTemporary) {
-            // Regra de Duodécimos: 1/12 do salário base por cada subsídio
-            // Calculamos com base no que foi efetivamente ganho de base
-            duodecimoFerias = basePay / 12;
-            duodecimoNatal = basePay / 12;
+            // Regra de Duodécimos: 1/12 do salário base + extras por cada subsídio
+            duodecimoFerias = round(basePay / 12);
+            duodecimoNatal = round(basePay / 12);
         }
 
-        const totalDuodecimosBruto = duodecimoFerias + duodecimoNatal;
-        const baseTributavel = basePay + extraPay + totalDuodecimosBruto;
+        const totalDuodecimosBruto = round(duodecimoFerias + duodecimoNatal);
+        const baseTributavel = round(basePay + extraPay + totalDuodecimosBruto);
         
-        const ssDiscount = baseTributavel * (userSettings.socialSecurityRate / 100);
-        const irsDiscount = baseTributavel * (userSettings.irsRate / 100);
+        const ssDiscount = round(baseTributavel * (userSettings.socialSecurityRate / 100));
+        const irsDiscount = round(baseTributavel * (userSettings.irsRate / 100));
         
-        // Subsídio de Refeição (Geralmente isento até certo limite em Portugal)
-        const dailyMealAllowance = userSettings.foodAllowance || 8.25;
-        const lunchAllowanceTotal = daysWorkedCount * dailyMealAllowance;
-        
-        const bruteTotal = baseTributavel; // Excluído Subsídio de Alimentação da remuneração bruta base
-        const netTotal = (baseTributavel - ssDiscount - irsDiscount); // Líquido no banco (sem cartão refeição)
-        const employerCost = baseTributavel * 1.2375 + lunchAllowanceTotal; 
+        const lunchAllowanceTotal = round(lunchAllowanceTotalResult);
+        const bruteTotal = round(baseTributavel); 
+        const netTotal = round(baseTributavel - ssDiscount - irsDiscount); 
+        const employerCost = round(baseTributavel * 1.2375 + lunchAllowanceTotal); 
 
         return {
             totalHours,
             totalExtraHours,
             daysWorked: daysWorkedCount,
-            businessDays,
+            businessDays: getBusinessDaysInMonth(startDate),
             basePay,
             extraPay,
             duodecimoFerias,
@@ -289,16 +295,17 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         doc.text(`Colaborador: ${user?.name || 'N/D'} | Empresa: ${user?.company || 'N/D'}`, 14, 28);
         doc.text(`${t('report_period')}: ${startDate.split('-').reverse().join('/')} até ${endDate.split('-').reverse().join('/')}`, 14, 33);
         
-        const rows = logs.map(l => {
+        const logData = logs.map(l => {
             const durationMs = Number(l.total_duration_ms) || 0;
             const duration = formatDuration(durationMs / 3600000);
             const lunch = l.breaks?.find((b:any) => b.type === 'LUNCH');
             const lunchStr = lunch ? `${new Date(lunch.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${lunch.end_time ? new Date(lunch.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...'}` : '---';
             
             const isHolidayDay = [...(settings?.holidays || []), ...systemHolidays].includes(l.date);
+            const dateStr = l.date.split('-').reverse().join('/');
             
             return [
-                `${l.date.split('-').reverse().join('/')}${isHolidayDay ? ' (F)' : ''}`,
+                `${dateStr}${isHolidayDay ? ' (F)' : ''}`,
                 new Date(l.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
                 lunchStr,
                 l.end_time ? new Date(l.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Aberto',
@@ -308,11 +315,18 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
 
         autoTable(doc, {
             head: [['Data', 'Entrada', 'Intervalo Almoço', 'Saída', 'Total']],
-            body: rows,
+            body: logData,
             startY: 40,
             theme: 'grid',
             headStyles: { fillColor: [16, 185, 129] },
-            styles: { fontSize: 8 }
+            styles: { fontSize: 8 },
+            columnStyles: {
+                0: { cellWidth: 30 },
+                1: { cellWidth: 25 },
+                2: { cellWidth: 40 },
+                3: { cellWidth: 25 },
+                4: { cellWidth: 30, halign: 'right' }
+            }
         });
 
         const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 10 : 50;
@@ -701,15 +715,15 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                     
                                                     return (
                                                         <tr key={log.id} className={`hover:bg-white/[0.02] transition-colors group ${isHoliday ? 'bg-amber-500/5' : ''}`}>
-                                                            <td className="px-6 py-4">
+                                                                    <td className="px-6 py-4">
                                                                 <div className="flex flex-col">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-sm font-bold text-white">{new Date(log.date).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})}</span>
+                                                                        <span className="text-sm font-bold text-white">{log.date.split('-').reverse().slice(0, 2).join('/')}</span>
                                                                         {isHoliday && (
                                                                             <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase tracking-tighter border border-amber-500/20">Feriado</span>
                                                                         )}
                                                                     </div>
-                                                                    <span className="text-[10px] text-slate-500 font-medium uppercase">{new Date(log.date).toLocaleDateString('pt-BR', {weekday:'short'})}</span>
+                                                                    <span className="text-[10px] text-slate-500 font-medium uppercase">{new Date(log.date + 'T12:00:00').toLocaleDateString('pt-BR', {weekday:'short'})}</span>
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
