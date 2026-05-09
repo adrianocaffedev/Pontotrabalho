@@ -5,7 +5,27 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal, UserDocument } from '..
 /**
  * IMPORTANTE: Para que esta aplicação funcione, você DEVE executar o seguinte SQL no seu painel do Supabase:
  * 
- * -- Criar tabela para metadados de documentos
+ * -- 1. Criar o Bucket de Documentos (caso não exista)
+ * -- No painel do Supabase, vá em Storage -> New Bucket -> Nome: 'documents' -> Public: ON
+ * -- OU execute este SQL:
+ * INSERT INTO storage.buckets (id, name, public) 
+ * VALUES ('documents', 'documents', true) 
+ * ON CONFLICT (id) DO NOTHING;
+ * 
+ * -- 2. Configurar Políticas de Segurança para o Storage (CRÍTICO)
+ * -- Estas políticas permitem que usuários (mesmo sem auth formal do Supabase) façam upload e gerenciem arquivos no bucket 'documents'
+ * -- Nota: Em produção, você deve restringir isso ao user_id real.
+ * 
+ * DROP POLICY IF EXISTS "Acesso Público Upload" ON storage.objects;
+ * CREATE POLICY "Acesso Público Upload" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'documents' );
+ * 
+ * DROP POLICY IF EXISTS "Acesso Público Select" ON storage.objects;
+ * CREATE POLICY "Acesso Público Select" ON storage.objects FOR SELECT USING ( bucket_id = 'documents' );
+ * 
+ * DROP POLICY IF EXISTS "Acesso Público Delete" ON storage.objects;
+ * CREATE POLICY "Acesso Público Delete" ON storage.objects FOR DELETE USING ( bucket_id = 'documents' );
+ * 
+ * -- 3. Criar tabela para metadados de documentos
  * CREATE TABLE IF NOT EXISTS user_documents (
  *   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
  *   user_id UUID REFERENCES app_users(id) ON DELETE CASCADE NOT NULL,
@@ -16,12 +36,10 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal, UserDocument } from '..
  *   created_at TIMESTAMPTZ DEFAULT NOW()
  * );
  * 
- * -- Ativar RLS e criar diretivas de segurança (com limpeza prévia)
+ * -- 4. Ativar RLS e criar diretivas de segurança (com limpeza prévia)
  * ALTER TABLE user_documents ENABLE ROW LEVEL SECURITY;
  * DROP POLICY IF EXISTS "Allow All" ON user_documents;
  * CREATE POLICY "Allow All" ON user_documents FOR ALL USING (true) WITH CHECK (true);
- * 
- * -- Notas: Lembre-se de criar um bucket público chamado 'documents' no Dashboard do Supabase.
  * 
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS company TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS job_title TEXT;
@@ -477,7 +495,11 @@ export const uploadUserDocument = async (
     // 1. Upload para o Supabase Storage (Bucket 'documents')
     const { error: uploadError } = await supabase.storage
       .from('documents')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type
+      });
 
     if (uploadError) throw uploadError;
 
