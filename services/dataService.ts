@@ -1,6 +1,7 @@
 
 import { supabase } from './supabase';
 import { TimeLog, AppSettings, AppUser, ContractRenewal, UserDocument } from '../types';
+import { Holiday, PORTUGAL_HOLIDAYS_2026 } from './holidayService';
 
 /**
  * IMPORTANTE: Para que esta aplicação funcione, você DEVE executar o seguinte SQL no seu painel do Supabase:
@@ -265,15 +266,24 @@ export const fetchRemoteData = async (userId: string) => {
   try {
     const { data: sData } = await supabase.from('user_settings').select('*').eq('user_id', userId).limit(1);
     const { data: lData } = await supabase.from('time_logs').select(`*, breaks (*), absences (*)`).eq('user_id', userId).order('start_time', { ascending: true });
-    const { data: hData } = await supabase.from('feriados').select('data');
     
+    // Buscar feriados do banco (se houver algum customizado)
+    const { data: hData } = await supabase.from('feriados').select('data');
+    const dbHolidays = (hData || []).map((h: any) => h.data);
+    
+    // Feriados estáticos de 2026
+    const staticHolidays = PORTUGAL_HOLIDAYS_2026.map(h => h.date);
+    
+    // Unificar e remover duplicatas
+    const unifiedHolidays = Array.from(new Set([...staticHolidays, ...dbHolidays]));
+
     // Fetch standalone absences (where time_log_id is null)
     const { data: aData } = await supabase.from('absences').select('*').eq('user_id', userId).is('time_log_id', null);
 
     return { 
       settings: sData && sData.length > 0 ? mapSettingsFromDb(sData[0]) : null,
       logs: (lData || []).map((l: any) => mapLogFromDb(l, l.breaks || [], l.absences || [])),
-      systemHolidays: (hData || []).map((h: any) => h.data),
+      systemHolidays: unifiedHolidays,
       standaloneAbsences: (aData || []).map((a: any) => ({
         id: a.id,
         date: a.date,

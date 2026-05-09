@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { TimeLog, AppUser, AppSettings, Absence } from '../types';
 import { Trash2, ArrowRight, Clock, CalendarOff, Download, PlusCircle, Edit3, Calendar, CalendarDays, MessageSquare } from 'lucide-react';
 import { getTranslation, TranslationKey } from '../services/translations';
+import { getHolidayByDate, getHolidayColorClasses } from '../services/holidayService';
 
 interface LogHistoryProps {
   logs: TimeLog[];
@@ -24,23 +25,32 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [showConfigId, setShowConfigId] = useState<string | null>(null);
 
-  const t = (key: TranslationKey) => getTranslation(settings.language || 'pt-PT', key);
+  const t = useCallback((key: TranslationKey) => getTranslation(settings.language || 'pt-PT', key), [settings.language]);
   
-  const calculateDurationStr = (ms: number) => {
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m`;
-  };
-
-  const reversedLogs = [...logs].reverse();
-  
-  // Combine logs and standalone absences for a unified view
-  const combinedHistory = [
-    ...logs.map(l => ({ ...l, entryType: 'log' as const })),
+  // Combine logs and standalone absences for a unified view with pre-calculated values
+  const combinedHistory = useMemo(() => [
+    ...logs.map(l => {
+      const holidayInfo = getHolidayByDate(l.date);
+      const isHoliday = [...(settings.holidays || []), ...systemHolidays].includes(l.date) || !!holidayInfo;
+      const holidayColors = holidayInfo ? getHolidayColorClasses(holidayInfo.type) : getHolidayColorClasses('FACULTATIVE');
+      
+      const ms = l.totalDurationMs;
+      const hours = Math.floor(ms / (1000 * 60 * 60));
+      const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+      
+      return { 
+        ...l, 
+        entryType: 'log' as const,
+        isHoliday,
+        holidayInfo,
+        holidayColors,
+        durationStr: `${hours}h ${minutes}m`
+      };
+    }),
     ...standaloneAbsences.map(a => ({ ...a, entryType: 'justification' as const }))
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [logs, standaloneAbsences, settings.holidays, systemHolidays]);
 
-  const visibleHistory = combinedHistory.slice(0, visibleCount);
+  const visibleHistory = useMemo(() => combinedHistory.slice(0, visibleCount), [combinedHistory, visibleCount]);
 
   return (
     <div className="space-y-6">
@@ -65,12 +75,15 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
           </div>
         ) : (
           visibleHistory.map((entry) => {
-            const isHoliday = entry.entryType === 'log' && 
-                             [...(settings.holidays || []), ...systemHolidays].includes((entry as TimeLog).date);
+            const isLog = entry.entryType === 'log';
+            const logEntry = isLog ? (entry as any) : null;
+            const isHoliday = isLog && logEntry.isHoliday;
+            const holidayInfo = isLog ? logEntry.holidayInfo : undefined;
+            const holidayColors = isLog ? logEntry.holidayColors : undefined;
             
             const isToday = entry.date === todayDate;
 
-            return entry.entryType === 'log' ? (
+            return isLog ? (
               <div 
                 key={entry.id} 
                 className={`group relative rounded-2xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden 
@@ -79,7 +92,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                     : entry.id === currentLogId 
                       ? 'bg-white/70 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 shadow-xl shadow-emerald-500/5' 
                       : isHoliday 
-                        ? 'bg-amber-50/40 dark:bg-amber-900/10 border-amber-200/60 dark:border-amber-500/20 shadow-lg shadow-amber-500/5'
+                        ? `${holidayColors?.bg} ${holidayColors?.border} ${holidayColors?.shadow}`
                         : 'bg-white/40 dark:bg-slate-900/40 border-white/60 dark:border-white/5 shadow-sm'}`}
               >
                 {/* Visual indicator for today */}
@@ -89,7 +102,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
 
                 {/* Holiday Decorative Element */}
                 {isHoliday && (
-                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 blur-2xl rounded-full pointer-events-none"></div>
+                  <div className={`absolute -right-4 -top-4 w-24 h-24 ${holidayColors?.dot} opacity-10 blur-2xl rounded-full pointer-events-none`}></div>
                 )}
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
@@ -100,14 +113,14 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                         : entry.id === currentLogId 
                           ? 'bg-emerald-500 text-white border-emerald-400' 
                           : isHoliday
-                            ? 'bg-amber-500 text-white border-amber-400 shadow-md shadow-amber-500/20'
+                            ? `${holidayColors?.iconBg} text-white border-white/20 shadow-md`
                             : 'bg-white/80 dark:bg-slate-800/50 text-emerald-500 dark:text-emerald-400 border-white dark:border-white/10'}`}
                     >
                       {isHoliday ? <CalendarDays size={22}/> : <Calendar size={22}/>}
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-emerald-600 dark:text-emerald-400' : isHoliday ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-emerald-600 dark:text-emerald-400' : isHoliday ? holidayColors?.text : 'text-slate-400'}`}>
                           {entry.date.split('-').reverse().join('/')}
                         </p>
                         {isToday && (
@@ -116,16 +129,16 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                           </span>
                         )}
                         {isHoliday && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[8px] font-black tracking-tighter uppercase border border-amber-200 dark:border-amber-500/30">
-                            {t('label_holiday')}
+                          <span className={`px-1.5 py-0.5 rounded-md ${holidayColors?.badge} text-[8px] font-black tracking-tighter uppercase border`}>
+                            {holidayInfo ? holidayInfo.name : t('label_holiday')}
                           </span>
                         )}
                       </div>
                       <p className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
-                        {new Date(entry.startTime).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'})} 
+                        {new Date((entry as TimeLog).startTime).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'})} 
                         <ArrowRight size={14} className="opacity-30" />
-                        {entry.endTime 
-                          ? new Date(entry.endTime).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'}) 
+                        {(entry as TimeLog).endTime 
+                          ? new Date((entry as TimeLog).endTime!).toLocaleTimeString(settings.language === 'en' ? 'en-US' : 'pt-PT', {hour:'2-digit',minute:'2-digit'}) 
                           : <span className="text-emerald-500 animate-pulse italic">{t('label_open')}</span>}
                       </p>
                     </div>
@@ -133,28 +146,26 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                   <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
                     <div className="flex flex-col items-end">
                       <span className={`font-mono font-black px-4 py-2 rounded-xl text-base border shadow-sm 
-                        ${isToday
+                         ${isToday
                           ? 'text-emerald-700 dark:text-emerald-300 bg-white/80 dark:bg-emerald-900/40 border-emerald-200/50 dark:border-emerald-700/50'
                           : isHoliday 
-                            ? 'text-amber-700 dark:text-amber-200 bg-amber-100/60 dark:bg-amber-900/40 border-amber-200/50 dark:border-amber-700/50' 
+                            ? `${holidayColors?.text} bg-white/60 dark:bg-slate-800/60 ${holidayColors?.border}` 
                             : 'text-slate-700 dark:text-slate-200 bg-white/60 dark:bg-slate-800/60 border-white/60 dark:border-slate-700/50'}`}
                       >
-                        {calculateDurationStr(entry.totalDurationMs)}
+                        {logEntry.durationStr}
                       </span>
-                      <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 mr-1 ${isToday ? 'text-emerald-500' : isHoliday ? 'text-amber-500' : 'text-slate-400'}`}>
+                      <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 mr-1 ${isToday ? 'text-emerald-500' : isHoliday ? holidayColors?.text : 'text-slate-400'}`}>
                         {t('label_total_time')}
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      {isToday && (
-                        <button 
-                          onClick={() => setShowConfigId(showConfigId === entry.id ? null : entry.id)} 
-                          className={`p-3 rounded-xl transition-all shadow-sm ${showConfigId === entry.id ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'}`}
-                          title={t('btn_view_config')}
-                        >
-                          <Clock size={18} />
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => setShowConfigId(showConfigId === entry.id ? null : entry.id)} 
+                        className={`p-3 rounded-xl transition-all shadow-sm ${showConfigId === entry.id ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'}`}
+                        title={t('btn_view_config')}
+                      >
+                        <Clock size={18} />
+                      </button>
                       <button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-emerald-500 hover:bg-white transition-all shadow-sm">
                         <Edit3 size={18}/>
                       </button>
@@ -166,7 +177,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                 </div>
 
                 {/* Inline config display */}
-                {isToday && showConfigId === entry.id && (
+                {showConfigId === entry.id && (
                   <div className="pt-6 border-t border-emerald-100 dark:border-emerald-900/50 space-y-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/50">
@@ -192,12 +203,12 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                           <tr>
                             <td className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('label_entry')}</td>
                             <td className="px-4 py-2.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-right">
-                              {new Date(entry.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {new Date((entry as TimeLog).startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </td>
                           </tr>
                           
                           {/* Todas as Pausas (Almoço e Café) */}
-                          {entry.breaks.map((brk, idx) => (
+                          {(entry as TimeLog).breaks.map((brk: any) => (
                             <React.Fragment key={brk.id}>
                               <tr>
                                 <td className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
@@ -224,8 +235,8 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                           <tr>
                             <td className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">{t('label_exit')}</td>
                             <td className="px-4 py-2.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 text-right">
-                              {entry.endTime 
-                                ? new Date(entry.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              {(entry as TimeLog).endTime 
+                                ? new Date((entry as TimeLog).endTime!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                 : <span className="animate-pulse italic opacity-50">{t('label_open')}</span>}
                             </td>
                           </tr>
@@ -235,9 +246,9 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                   </div>
                 )}
 
-                {entry.absences && entry.absences.length > 0 && (
+                {(entry as TimeLog).absences && (entry as TimeLog).absences.length > 0 && (
                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 relative z-10">
-                      {entry.absences.map(a => (
+                      {(entry as TimeLog).absences.map((a: any) => (
                          <div key={a.id} className="flex flex-col gap-2 p-3 bg-rose-500/5 rounded-xl border border-rose-500/10">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
@@ -260,21 +271,21 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                             <div>
                                 <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">{entry.date.split('-').reverse().join('/')}</p>
                                 <p className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
-                                    {entry.type === 'ABSENCE' ? t('label_justified_absence') : t('label_justified_delay')}
+                                    {(entry as Absence).type === 'ABSENCE' ? t('label_justified_absence') : t('label_justified_delay')}
                                 </p>
                             </div>
                         </div>
-                        <div className={`px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-rose-100 dark:border-rose-900/30 font-bold text-[10px] uppercase tracking-widest ${entry.type === 'ABSENCE' ? 'text-rose-500' : 'text-amber-500'}`}>
-                            {entry.type === 'ABSENCE' ? t('label_full_day') : t('label_late_entry')}
+                        <div className={`px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-rose-100 dark:border-rose-900/30 font-bold text-[10px] uppercase tracking-widest ${(entry as Absence).type === 'ABSENCE' ? 'text-rose-500' : 'text-amber-500'}`}>
+                            {(entry as Absence).type === 'ABSENCE' ? t('label_full_day') : t('label_late_entry')}
                         </div>
                     </div>
                     <div className="bg-white/60 dark:bg-slate-800/60 p-4 rounded-xl border border-white dark:border-slate-700 italic">
-                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">"{entry.reason}"</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">"{(entry as Absence).reason}"</p>
                     </div>
-                    {entry.type === 'DELAY' && entry.startTime && entry.endTime && (
+                    {(entry as Absence).type === 'DELAY' && (entry as Absence).startTime && (entry as Absence).endTime && (
                          <div className="flex gap-6 px-2">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase"><Clock size={12}/> {t('label_expected')}: <span className="text-slate-700 dark:text-white">{entry.startTime}</span></div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase"><Clock size={12}/> {t('label_arrival')}: <span className="text-slate-700 dark:text-white">{entry.endTime}</span></div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase"><Clock size={12}/> {t('label_expected')}: <span className="text-slate-700 dark:text-white">{(entry as Absence).startTime}</span></div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase"><Clock size={12}/> {t('label_arrival')}: <span className="text-slate-700 dark:text-white">{(entry as Absence).endTime}</span></div>
                          </div>
                     )}
                 </div>

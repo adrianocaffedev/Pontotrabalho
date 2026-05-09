@@ -6,6 +6,7 @@ import { supabase } from '../services/supabase';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getTranslation, TranslationKey } from '../services/translations';
+import { getHolidayByDate, getHolidayColorClasses } from '../services/holidayService';
 
 interface ReportsPortalProps {
     isOpen: boolean;
@@ -160,7 +161,8 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             
             const logDate = new Date(log.date + 'T12:00:00'); // Force midday to avoid TZ issues
             const dayOfWeek = logDate.getDay();
-            const isHoliday = [...(userSettings.holidays || []), ...systemHolidays].includes(log.date);
+            const holidayInfo = getHolidayByDate(log.date);
+            const isHoliday = [...(userSettings.holidays || []), ...systemHolidays].includes(log.date) || !!holidayInfo;
             const isOvertimeDay = (userSettings.overtimeDays || []).includes(dayOfWeek);
             
             const hours = logDurationMs / 3600000;
@@ -301,11 +303,12 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             const lunch = l.breaks?.find((b:any) => b.type === 'LUNCH');
             const lunchStr = lunch ? `${new Date(lunch.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${lunch.end_time ? new Date(lunch.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...'}` : '---';
             
-            const isHolidayDay = [...(settings?.holidays || []), ...systemHolidays].includes(l.date);
+            const holidayInfo = getHolidayByDate(l.date);
+            const isHolidayDay = [...(settings?.holidays || []), ...systemHolidays].includes(l.date) || !!holidayInfo;
             const dateStr = l.date.split('-').reverse().join('/');
             
             return [
-                `${dateStr}${isHolidayDay ? ' (F)' : ''}`,
+                `${dateStr}${isHolidayDay ? ` (${holidayInfo?.name || 'F'})` : ''}`,
                 new Date(l.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
                 lunchStr,
                 l.end_time ? new Date(l.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Aberto',
@@ -711,16 +714,20 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                 {logs.map((log: any) => {
                                                     const lunchBreak = log.breaks?.find((b: any) => b.type === 'LUNCH');
                                                     const duration = Number(log.total_duration_ms) / 3600000;
-                                                    const isHoliday = [...(userSettings?.holidays || []), ...systemHolidays].includes(log.date);
+                                                    const holidayInfo = getHolidayByDate(log.date);
+                                                    const isHoliday = [...(userSettings?.holidays || []), ...systemHolidays].includes(log.date) || !!holidayInfo;
+                                                    const holidayColors = holidayInfo ? getHolidayColorClasses(holidayInfo.type) : getHolidayColorClasses('FACULTATIVE');
                                                     
                                                     return (
-                                                        <tr key={log.id} className={`hover:bg-white/[0.02] transition-colors group ${isHoliday ? 'bg-amber-500/5' : ''}`}>
+                                                        <tr key={log.id} className={`hover:bg-white/[0.02] transition-colors group ${isHoliday ? holidayColors.bg : ''}`}>
                                                                     <td className="px-6 py-4">
                                                                 <div className="flex flex-col">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-sm font-bold text-white">{log.date.split('-').reverse().slice(0, 2).join('/')}</span>
                                                                         {isHoliday && (
-                                                                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase tracking-tighter border border-amber-500/20">Feriado</span>
+                                                                            <span className={`px-1.5 py-0.5 rounded ${holidayColors.badge} text-[8px] font-black uppercase tracking-tighter border`}>
+                                                                                {holidayInfo ? holidayInfo.name : 'Feriado'}
+                                                                            </span>
                                                                         )}
                                                                     </div>
                                                                     <span className="text-[10px] text-slate-500 font-medium uppercase">{new Date(log.date + 'T12:00:00').toLocaleDateString('pt-BR', {weekday:'short'})}</span>
