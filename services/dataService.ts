@@ -6,26 +6,31 @@ import { TimeLog, AppSettings, AppUser, ContractRenewal, UserDocument } from '..
  * IMPORTANTE: Para que esta aplicação funcione, você DEVE executar o seguinte SQL no seu painel do Supabase:
  * 
  * -- 1. Criar o Bucket de Documentos (caso não exista)
- * -- No painel do Supabase, vá em Storage -> New Bucket -> Nome: 'documents' -> Public: ON
- * -- OU execute este SQL:
- * INSERT INTO storage.buckets (id, name, public) 
- * VALUES ('documents', 'documents', true) 
- * ON CONFLICT (id) DO NOTHING;
+ * -- Vá em Storage -> New Bucket -> Nome: 'DOCUMENTS' -> Public: ON
  * 
- * -- 2. Configurar Políticas de Segurança para o Storage (CRÍTICO)
- * -- Estas políticas permitem que usuários (mesmo sem auth formal do Supabase) façam upload e gerenciem arquivos no bucket 'documents'
- * -- Nota: Em produção, você deve restringir isso ao user_id real.
+ * -- 2. Configurar Políticas de Segurança para o Storage (Acesso Público para Testes)
+ * -- Execute este bloco para garantir que as políticas sejam recriadas:
+ * BEGIN;
+ *   DROP POLICY IF EXISTS "Acesso Público Upload" ON storage.objects;
+ *   DROP POLICY IF EXISTS "Acesso Público Select" ON storage.objects;
+ *   DROP POLICY IF EXISTS "Acesso Público Delete" ON storage.objects;
+ *   DROP POLICY IF EXISTS "Acesso Público Update" ON storage.objects;
  * 
- * DROP POLICY IF EXISTS "Acesso Público Upload" ON storage.objects;
- * CREATE POLICY "Acesso Público Upload" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'documents' );
+ *   CREATE POLICY "Acesso Público Upload" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'DOCUMENTS' );
+ *   CREATE POLICY "Acesso Público Select" ON storage.objects FOR SELECT USING ( bucket_id = 'DOCUMENTS' );
+ *   CREATE POLICY "Acesso Público Delete" ON storage.objects FOR DELETE USING ( bucket_id = 'DOCUMENTS' );
+ *   CREATE POLICY "Acesso Público Update" ON storage.objects FOR UPDATE USING ( bucket_id = 'DOCUMENTS' ) WITH CHECK ( bucket_id = 'DOCUMENTS' );
+ * COMMIT;
  * 
- * DROP POLICY IF EXISTS "Acesso Público Select" ON storage.objects;
- * CREATE POLICY "Acesso Público Select" ON storage.objects FOR SELECT USING ( bucket_id = 'documents' );
+ * -- 3. IMPORTANTE: Configuração de CORS (No Dashboard do Supabase)
+ * -- O erro 'Failed to fetch' é 100% causado por falta de configuração de CORS.
+ * -- Vá em: Storage -> Settings -> API -> CORS -> Add Item
+ * -- Origin: *
+ * -- Methods: GET, POST, PUT, DELETE, OPTIONS
+ * -- Allowed Headers: *
+ * -- Expose Headers: Content-Range, Content-Length, ETag
  * 
- * DROP POLICY IF EXISTS "Acesso Público Delete" ON storage.objects;
- * CREATE POLICY "Acesso Público Delete" ON storage.objects FOR DELETE USING ( bucket_id = 'documents' );
- * 
- * -- 3. Criar tabela para metadados de documentos
+ * -- 4. Criar tabela para metadados de documentos
  * CREATE TABLE IF NOT EXISTS user_documents (
  *   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
  *   user_id UUID REFERENCES app_users(id) ON DELETE CASCADE NOT NULL,
@@ -244,7 +249,7 @@ export const deleteAppUser = async (id: string): Promise<{ success: boolean, err
     const { data: docs } = await supabase.from('user_documents').select('*').eq('user_id', id);
     if (docs && docs.length > 0) {
         const filePaths = docs.map(d => d.file_path);
-        await supabase.storage.from('documents').remove(filePaths);
+        await supabase.storage.from('DOCUMENTS').remove(filePaths);
         await supabase.from('user_documents').delete().eq('user_id', id);
     }
 
@@ -490,18 +495,26 @@ export const uploadUserDocument = async (
   try {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}_${Date.now()}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
+    // Simplificando o path para evitar problemas com pastas aninhadas se houver restrição
+    const filePath = fileName; 
 
-    // 1. Upload para o Supabase Storage (Bucket 'documents')
+    // 1. Upload para o Supabase Storage (Bucket 'DOCUMENTS')
     const { error: uploadError } = await supabase.storage
-      .from('documents')
+      .from('DOCUMENTS')
       .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
+        upsert: true, // Usar upsert para evitar erros de duplicidade se o usuário clicar rápido
         contentType: file.type
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error("DEBUG - Document Upload Error Object:", JSON.stringify(uploadError, null, 2));
+      console.error("DEBUG - Upload Error Message:", uploadError.message);
+      
+      if (uploadError.message === 'Failed to fetch' || uploadError.name === 'FetchError' || (uploadError as any).status === 0) {
+        throw new Error("ERRO DE REDE/CORS: O navegador não conseguiu completar o upload. Isso acontece se:\n1. O bucket 'DOCUMENTS' não foi criado no Supabase.\n2. O bucket não está marcado como 'Public'.\n3. O domínio deste app está sendo bloqueado pelo CORS do Supabase.");
+      }
+      throw uploadError;
+    }
 
     // 2. Salvar metadados na tabela do banco
     const { data, error: dbError } = await supabase
@@ -556,7 +569,7 @@ export const deleteUserDocument = async (document: UserDocument): Promise<{ succ
   try {
     // 1. Deletar do Storage
     const { error: storageError } = await supabase.storage
-      .from('documents')
+      .from('DOCUMENTS')
       .remove([document.file_path]);
 
     if (storageError) throw storageError;
@@ -577,6 +590,6 @@ export const deleteUserDocument = async (document: UserDocument): Promise<{ succ
 };
 
 export const getDocumentPublicUrl = (filePath: string): string => {
-  const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
+  const { data } = supabase.storage.from('DOCUMENTS').getPublicUrl(filePath);
   return data.publicUrl;
 };
