@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Info, MessageSquare, Files } from 'lucide-react';
-import { AppSettings, AppUser, ContractRenewal } from '../types';
-import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser, fetchAllJustifications } from '../services/dataService';
+import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar, Plus, Trash2, Users, Check, UserPlus, Loader2, Settings as SettingsIcon, Lock, Unlock, ShieldAlert, AlertTriangle, Cloud, Edit2, History, Key, ShieldCheck, Globe, CalendarDays, Info, MessageSquare, Files, FileText, ImageIcon, Download, Eye } from 'lucide-react';
+import { AppSettings, AppUser, ContractRenewal, UserDocument } from '../types';
+import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser, fetchAllJustifications, uploadUserDocument, getUserDocuments, deleteUserDocument, getDocumentPublicUrl } from '../services/dataService';
 import { getTranslation, TranslationKey } from '../services/translations';
 
 interface SettingsModalProps {
@@ -54,6 +54,51 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<Partial<AppUser>>({});
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [editUserSubTab, setEditUserSubTab] = useState<'info' | 'docs'>('info');
+  const [userDocs, setUserDocs] = useState<UserDocument[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [docCategory, setDocCategory] = useState<UserDocument['category']>('OTHER');
+
+  const fetchUserDocs = async (userId: string) => {
+    setLoadingDocs(true);
+    const docs = await getUserDocuments(userId);
+    setUserDocs(docs);
+    setLoadingDocs(false);
+  };
+
+  useEffect(() => {
+    if (editingUserId && editUserSubTab === 'docs') {
+      fetchUserDocs(editingUserId);
+    }
+  }, [editingUserId, editUserSubTab]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingUserId) return;
+
+    setIsUploading(true);
+    const { success, error, document } = await uploadUserDocument(editingUserId, file, docCategory);
+    setIsUploading(false);
+
+    if (success && document) {
+      setUserDocs([document, ...userDocs]);
+      alert(t('upload_success'));
+    } else {
+      alert("Erro no upload: " + error);
+    }
+  };
+
+  const handleDeleteDoc = async (doc: UserDocument) => {
+    if (!window.confirm(t('delete_confirm_doc'))) return;
+
+    const { success, error } = await deleteUserDocument(doc);
+    if (success) {
+      setUserDocs(userDocs.filter(d => d.id !== doc.id));
+    } else {
+      alert("Erro ao excluir: " + error);
+    }
+  };
 
   const [adminPassword, setAdminPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
@@ -111,6 +156,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleEditClick = (user: AppUser) => {
       setEditingUserId(user.id);
       setEditingUser({ ...user });
+      setEditUserSubTab('info');
   };
 
   const handleSaveEditUser = async (e: React.FormEvent) => {
@@ -633,74 +679,168 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         {usersList.map(user => (
                             <div key={user.id} className="p-5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5 rounded-xl shadow-sm transition-all hover:bg-slate-100 dark:hover:bg-slate-800/60">
                                 {editingUserId === user.id ? (
-                                    <form onSubmit={handleSaveEditUser} className="space-y-4">
-                                        <input 
-                                            value={editingUser.name || ''} 
-                                            onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
-                                            className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm"
-                                        />
-                                        <input 
-                                            placeholder="Empresa"
-                                            value={editingUser.company || ''} 
-                                            onChange={e => setEditingUser({...editingUser, company: e.target.value})} 
-                                            className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm"
-                                        />
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input 
-                                                placeholder="Cargo"
-                                                value={editingUser.jobTitle || ''} 
-                                                onChange={e => setEditingUser({...editingUser, jobTitle: e.target.value})} 
-                                                className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm"
-                                            />
-                                            <input 
-                                                placeholder="PIN"
-                                                maxLength={4}
-                                                value={editingUser.pin || ''} 
-                                                onChange={e => setEditingUser({...editingUser, pin: e.target.value})} 
-                                                className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm font-mono text-center"
-                                            />
-                                        </div>
-                                        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                                    <div className="space-y-6">
+                                        {/* Sub-tabs for Editing User */}
+                                        <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1 rounded-xl border border-slate-200 dark:border-white/5 mx-[-10px] mb-2">
                                             <button 
-                                                type="button"
-                                                onClick={() => setEditingUser({...editingUser, isAdmin: false})}
-                                                className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest rounded-lg transition-all ${!editingUser.isAdmin ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}
+                                                onClick={() => setEditUserSubTab('info')}
+                                                className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2 ${editUserSubTab === 'info' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/10' : 'text-slate-400 dark:text-slate-500'}`}
                                             >
-                                                Comum
+                                                <UserPlus size={14}/> {t('settings_general')}
                                             </button>
                                             <button 
-                                                type="button"
-                                                onClick={() => setEditingUser({...editingUser, isAdmin: true})}
-                                                className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.isAdmin ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500'}`}
+                                                onClick={() => setEditUserSubTab('docs')}
+                                                className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2 ${editUserSubTab === 'docs' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/10' : 'text-slate-400 dark:text-slate-500'}`}
                                             >
-                                                Admin (Super)
+                                                <Files size={14}/> {t('tab_documents')}
                                             </button>
                                         </div>
-                                        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-                                            <button 
-                                                type="button"
-                                                onClick={() => setEditingUser({...editingUser, contractType: 'EFFECTIVE'})}
-                                                className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.contractType === 'EFFECTIVE' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500'}`}
-                                            >
-                                                Efetivo
-                                            </button>
-                                            <button 
-                                                type="button"
-                                                onClick={() => setEditingUser({...editingUser, contractType: 'TEMPORARY'})}
-                                                className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.contractType === 'TEMPORARY' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500'}`}
-                                            >
-                                                Temporário
-                                            </button>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button type="submit" disabled={isUpdatingUser} className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
-                                                {isUpdatingUser ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} Salvar
-                                            </button>
-                                            <button type="button" onClick={() => setEditingUserId(null)} className="px-4 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white py-2.5 rounded-xl font-bold text-xs hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
-                                                <X size={14}/>
-                                            </button>
-                                        </div>
-                                    </form>
+
+                                        {editUserSubTab === 'info' ? (
+                                            <form onSubmit={handleSaveEditUser} className="space-y-4 animate-in slide-in-from-left-2 duration-300">
+                                                <input 
+                                                    value={editingUser.name || ''} 
+                                                    onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
+                                                    className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm"
+                                                />
+                                                <input 
+                                                    placeholder="Empresa"
+                                                    value={editingUser.company || ''} 
+                                                    onChange={e => setEditingUser({...editingUser, company: e.target.value})} 
+                                                    className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm"
+                                                />
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <input 
+                                                        placeholder="Cargo"
+                                                        value={editingUser.jobTitle || ''} 
+                                                        onChange={e => setEditingUser({...editingUser, jobTitle: e.target.value})} 
+                                                        className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm"
+                                                    />
+                                                    <input 
+                                                        placeholder="PIN"
+                                                        maxLength={4}
+                                                        value={editingUser.pin || ''} 
+                                                        onChange={e => setEditingUser({...editingUser, pin: e.target.value})} 
+                                                        className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-sm font-mono text-center"
+                                                    />
+                                                </div>
+                                                <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setEditingUser({...editingUser, isAdmin: false})}
+                                                        className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest rounded-lg transition-all ${!editingUser.isAdmin ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}
+                                                    >
+                                                        Comum
+                                                    </button>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setEditingUser({...editingUser, isAdmin: true})}
+                                                        className={`flex-1 py-1.5 text-[8px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.isAdmin ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500'}`}
+                                                    >
+                                                        Admin (Super)
+                                                    </button>
+                                                </div>
+                                                <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setEditingUser({...editingUser, contractType: 'EFFECTIVE'})}
+                                                        className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.contractType === 'EFFECTIVE' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500'}`}
+                                                    >
+                                                        Efetivo
+                                                    </button>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setEditingUser({...editingUser, contractType: 'TEMPORARY'})}
+                                                        className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest rounded-lg transition-all ${editingUser.contractType === 'TEMPORARY' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500'}`}
+                                                    >
+                                                        Temporário
+                                                    </button>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button type="submit" disabled={isUpdatingUser} className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
+                                                        {isUpdatingUser ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} Salvar
+                                                    </button>
+                                                    <button type="button" onClick={() => setEditingUserId(null)} className="px-4 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white py-2.5 rounded-xl font-bold text-xs hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
+                                                        <X size={14}/>
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        ) : (
+                                            <div className="space-y-4 animate-in slide-in-from-right-2 duration-300">
+                                                {/* Upload Section */}
+                                                <div className="bg-emerald-50 dark:bg-emerald-500/5 p-4 rounded-xl border border-emerald-100 dark:border-emerald-500/10">
+                                                    <div className="flex flex-col gap-3">
+                                                        <div className="flex flex-col gap-1">
+                                                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">{t('label_category')}</label>
+                                                            <select 
+                                                                value={docCategory}
+                                                                onChange={(e) => setDocCategory(e.target.value as any)}
+                                                                className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold outline-none"
+                                                            >
+                                                                <option value="CONTRACT">{t('cat_contract')}</option>
+                                                                <option value="JUSTIFICATION">{t('cat_justification')}</option>
+                                                                <option value="ID">{t('cat_id')}</option>
+                                                                <option value="OTHER">{t('cat_other')}</option>
+                                                            </select>
+                                                        </div>
+                                                        <label className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all cursor-pointer">
+                                                            {isUploading ? <Loader2 className="animate-spin" size={14}/> : <Plus size={14}/>}
+                                                            {t('label_upload_doc')}
+                                                            <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} accept=".pdf,image/*" />
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                {/* Documents List */}
+                                                <div className="space-y-3">
+                                                    {loadingDocs ? (
+                                                        <div className="flex justify-center py-6"><Loader2 className="animate-spin text-emerald-500" /></div>
+                                                    ) : userDocs.length === 0 ? (
+                                                        <p className="text-[10px] text-slate-500 italic text-center py-4">{t('empty_docs')}</p>
+                                                    ) : (
+                                                        userDocs.map(doc => (
+                                                            <div key={doc.id} className="flex items-center justify-between p-3 bg-white/50 dark:bg-slate-900/40 border border-slate-100 dark:border-white/5 rounded-xl shadow-sm group">
+                                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                                    <div className={`p-2 rounded-lg ${doc.file_type.includes('pdf') ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                                                        {doc.file_type.includes('pdf') ? <FileText size={16}/> : <ImageIcon size={16}/>}
+                                                                    </div>
+                                                                    <div className="overflow-hidden">
+                                                                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{doc.name}</p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">{t(`cat_${doc.category.toLowerCase()}` as any)}</span>
+                                                                            <span className="text-[8px] text-slate-400 uppercase">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-1 shrink-0">
+                                                                    <a 
+                                                                        href={getDocumentPublicUrl(doc.file_path)} 
+                                                                        target="_blank" 
+                                                                        rel="noopener noreferrer"
+                                                                        className="p-2 text-slate-400 hover:text-emerald-500 transition-colors"
+                                                                        title="Ver"
+                                                                    >
+                                                                        <Eye size={16}/>
+                                                                    </a>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteDoc(doc)} 
+                                                                        className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                                                                        title="Excluir"
+                                                                    >
+                                                                        <Trash2 size={16}/>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+
+                                                <button type="button" onClick={() => setEditingUserId(null)} className="w-full py-2.5 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all">
+                                                    Fechar Edição
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">

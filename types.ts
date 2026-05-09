@@ -61,6 +61,15 @@ export interface ContractRenewal {
   date: string;
 }
 
+export interface UserDocument {
+  id: string;
+  user_id: string;
+  name: string;
+  file_path: string;
+  file_type: string;
+  category: 'CONTRACT' | 'JUSTIFICATION' | 'ID' | 'OTHER';
+  created_at: string;
+}
 export interface AppUser {
   id: string;
   name: string;

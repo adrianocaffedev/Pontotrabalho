@@ -82,7 +82,17 @@ export const translations = {
     label_recorded: 'Registrado',
     label_entry: 'Entrada',
     label_exit: 'Saída',
-    label_return: 'Retorno'
+    label_return: 'Retorno',
+    tab_documents: 'Documentos',
+    label_upload_doc: 'Carregar Documento',
+    label_category: 'Categoria',
+    cat_contract: 'Contrato',
+    cat_justification: 'Justificativa',
+    cat_id: 'Identificação',
+    cat_other: 'Outro',
+    empty_docs: 'Nenhum documento encontrado.',
+    upload_success: 'Upload realizado com sucesso!',
+    delete_confirm_doc: 'Tem certeza que deseja excluir este documento?'
   },
   'pt-PT': {
     status_idle: 'Disponível',
@@ -166,7 +176,17 @@ export const translations = {
     label_recorded: 'Registado',
     label_entry: 'Entrada',
     label_exit: 'Saída',
-    label_return: 'Retorno'
+    label_return: 'Retorno',
+    tab_documents: 'Documentos',
+    label_upload_doc: 'Submeter Documento',
+    label_category: 'Categoria',
+    cat_contract: 'Contrato',
+    cat_justification: 'Justificativa',
+    cat_id: 'Identificação',
+    cat_other: 'Outro',
+    empty_docs: 'Nenhum documento encontrado.',
+    upload_success: 'Upload realizado com sucesso!',
+    delete_confirm_doc: 'Tem a certeza que deseja eliminar este documento?'
   },
   'en': {
     status_idle: 'Idle',
@@ -250,7 +270,17 @@ export const translations = {
     label_recorded: 'Recorded',
     label_entry: 'Entry',
     label_exit: 'Exit',
-    label_return: 'Return'
+    label_return: 'Return',
+    tab_documents: 'Documents',
+    label_upload_doc: 'Upload Document',
+    label_category: 'Category',
+    cat_contract: 'Contract',
+    cat_justification: 'Justification',
+    cat_id: 'Identification',
+    cat_other: 'Other',
+    empty_docs: 'No documents found.',
+    upload_success: 'Upload successful!',
+    delete_confirm_doc: 'Are you sure you want to delete this document?'
   }
 };
 

@@ -1,9 +1,27 @@
 
 import { supabase } from './supabase';
-import { TimeLog, AppSettings, AppUser, ContractRenewal } from '../types';
+import { TimeLog, AppSettings, AppUser, ContractRenewal, UserDocument } from '../types';
 
 /**
  * IMPORTANTE: Para que esta aplicação funcione, você DEVE executar o seguinte SQL no seu painel do Supabase:
+ * 
+ * -- Criar tabela para metadados de documentos
+ * CREATE TABLE IF NOT EXISTS user_documents (
+ *   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+ *   user_id UUID REFERENCES app_users(id) ON DELETE CASCADE NOT NULL,
+ *   name TEXT NOT NULL,
+ *   file_path TEXT NOT NULL,
+ *   file_type TEXT NOT NULL,
+ *   category TEXT DEFAULT 'OTHER', -- CONTRACT, JUSTIFICATION, ID, OTHER
+ *   created_at TIMESTAMPTZ DEFAULT NOW()
+ * );
+ * 
+ * -- Ativar RLS e criar diretivas de segurança (com limpeza prévia)
+ * ALTER TABLE user_documents ENABLE ROW LEVEL SECURITY;
+ * DROP POLICY IF EXISTS "Allow All" ON user_documents;
+ * CREATE POLICY "Allow All" ON user_documents FOR ALL USING (true) WITH CHECK (true);
+ * 
+ * -- Notas: Lembre-se de criar um bucket público chamado 'documents' no Dashboard do Supabase.
  * 
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS company TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS job_title TEXT;
@@ -203,6 +221,15 @@ export const deleteAppUser = async (id: string): Promise<{ success: boolean, err
         await supabase.from('time_logs').delete().in('id', logIds);
     }
     await supabase.from('user_settings').delete().eq('user_id', id);
+    
+    // Deletar documentos (Banco e Storage)
+    const { data: docs } = await supabase.from('user_documents').select('*').eq('user_id', id);
+    if (docs && docs.length > 0) {
+        const filePaths = docs.map(d => d.file_path);
+        await supabase.storage.from('documents').remove(filePaths);
+        await supabase.from('user_documents').delete().eq('user_id', id);
+    }
+
     const { error } = await supabase.from('app_users').delete().eq('id', id);
     return { success: !error, error: error?.message || null };
   } catch (err: any) {
@@ -433,4 +460,101 @@ export const saveRemoteSettings = async (settings: AppSettings, userId: string):
     console.error("Erro em saveRemoteSettings:", err);
     return { success: false, error: err.message };
   }
+};
+
+// --- NOVAS FUNÇÕES DE DOCUMENTOS (SUPABASE STORAGE + DB) ---
+
+export const uploadUserDocument = async (
+  userId: string, 
+  file: File, 
+  category: UserDocument['category'] = 'OTHER'
+): Promise<{ success: boolean; error?: string; document?: UserDocument }> => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}_${Date.now()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+
+    // 1. Upload para o Supabase Storage (Bucket 'documents')
+    const { error: uploadError } = await supabase.storage
+      .from('documents')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    // 2. Salvar metadados na tabela do banco
+    const { data, error: dbError } = await supabase
+      .from('user_documents')
+      .insert({
+        user_id: userId,
+        name: file.name,
+        file_path: filePath,
+        file_type: file.type,
+        category
+      })
+      .select()
+      .single();
+
+    if (dbError) throw dbError;
+
+    return { 
+      success: true, 
+      document: {
+        id: data.id,
+        user_id: data.user_id,
+        name: data.name,
+        file_path: data.file_path,
+        file_type: data.file_type,
+        category: data.category,
+        created_at: data.created_at
+      } 
+    };
+  } catch (err: any) {
+    console.error("Erro ao fazer upload de documento:", err);
+    return { success: false, error: err.message };
+  }
+};
+
+export const getUserDocuments = async (userId: string): Promise<UserDocument[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('user_documents')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error("Erro ao buscar documentos:", err);
+    return [];
+  }
+};
+
+export const deleteUserDocument = async (document: UserDocument): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // 1. Deletar do Storage
+    const { error: storageError } = await supabase.storage
+      .from('documents')
+      .remove([document.file_path]);
+
+    if (storageError) throw storageError;
+
+    // 2. Deletar do Banco
+    const { error: dbError } = await supabase
+      .from('user_documents')
+      .delete()
+      .eq('id', document.id);
+
+    if (dbError) throw dbError;
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("Erro ao deletar documento:", err);
+    return { success: false, error: err.message };
+  }
+};
+
+export const getDocumentPublicUrl = (filePath: string): string => {
+  const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
+  return data.publicUrl;
 };
