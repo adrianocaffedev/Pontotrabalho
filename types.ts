@@ -32,6 +32,9 @@ export interface TimeLog {
   absences: Absence[];
   endTime?: string;
   totalDurationMs: number;
+  productionBox?: string;
+  productionInfeed?: string;
+  productionPicking?: number;
 }
 
 export interface AppSettings {

@@ -1,7 +1,16 @@
 
 import { supabase } from './supabase';
-import { TimeLog, AppSettings, AppUser, ContractRenewal, UserDocument } from '../types';
+import { TimeLog, AppSettings, AppUser, ContractRenewal, UserDocument, Absence } from '../types';
 import { Holiday, PORTUGAL_HOLIDAYS_2026 } from './holidayService';
+import { dbLocal, addToSyncQueue } from './localDb';
+
+// Helper to check if online
+const isOnline = () => {
+  if (typeof navigator !== 'undefined') {
+    return navigator.onLine;
+  }
+  return true;
+};
 
 /**
  * IMPORTANTE: Para que esta aplicação funcione, você DEVE executar o seguinte SQL no seu painel do Supabase:
@@ -72,6 +81,11 @@ import { Holiday, PORTUGAL_HOLIDAYS_2026 } from './holidayService';
  * ALTER TABLE absences ADD COLUMN IF NOT EXISTS date TEXT;
  * ALTER TABLE absences ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE CASCADE;
  * ALTER TABLE absences ALTER COLUMN time_log_id DROP NOT NULL;
+ * 
+ * -- Novas colunas para produção
+ * ALTER TABLE time_logs ADD COLUMN IF NOT EXISTS production_box TEXT;
+ * ALTER TABLE time_logs ADD COLUMN IF NOT EXISTS production_infeed TEXT;
+ * ALTER TABLE time_logs ADD COLUMN IF NOT EXISTS production_picking NUMERIC DEFAULT 0;
  */
 
 const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
@@ -105,6 +119,9 @@ const mapLogFromDb = (dbLog: any, dbBreaks: any[], dbAbsences: any[]): TimeLog =
     startTime: dbLog.start_time,
     endTime: dbLog.end_time || undefined,
     totalDurationMs: Number(dbLog.total_duration_ms),
+    productionBox: dbLog.production_box || '',
+    productionInfeed: dbLog.production_infeed || '',
+    productionPicking: dbLog.production_picking || 0,
     breaks: dbBreaks.map(b => ({
       id: b.id,
       startTime: b.start_time,
@@ -140,12 +157,21 @@ const mapUserFromDb = (dbUser: any): AppUser => {
 };
 
 export const getAppUsers = async (): Promise<AppUser[]> => {
-  const { data, error } = await supabase.from('app_users').select('*').order('name');
-  if (error) {
-    console.error("Erro ao buscar usuários:", error);
-    return [];
+  const localUsers = await dbLocal.users.toArray();
+  
+  if (isOnline()) {
+    try {
+      const { data, error } = await supabase.from('app_users').select('*').order('name');
+      if (!error && data) {
+        const users = data.map(mapUserFromDb);
+        await dbLocal.users.bulkPut(users);
+        return users;
+      }
+    } catch (e) {
+      console.error("Supabase user fetch error", e);
+    }
   }
-  return (data || []).map(mapUserFromDb);
+  return localUsers;
 };
 
 export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user: AppUser | null, error: string | null }> => {
@@ -263,28 +289,19 @@ export const deleteAppUser = async (id: string): Promise<{ success: boolean, err
 
 export const fetchRemoteData = async (userId: string) => {
   if (!userId) return { settings: null, logs: [], systemHolidays: [], standaloneAbsences: [] };
-  try {
-    const { data: sData } = await supabase.from('user_settings').select('*').eq('user_id', userId).limit(1);
-    const { data: lData } = await supabase.from('time_logs').select(`*, breaks (*), absences (*)`).eq('user_id', userId).order('start_time', { ascending: true });
-    
-    // Buscar feriados do banco (se houver algum customizado)
-    const { data: hData } = await supabase.from('feriados').select('data');
-    const dbHolidays = (hData || []).map((h: any) => h.data);
-    
-    // Feriados estáticos de 2026
-    const staticHolidays = PORTUGAL_HOLIDAYS_2026.map(h => h.date);
-    
-    // Unificar e remover duplicatas
-    const unifiedHolidays = Array.from(new Set([...staticHolidays, ...dbHolidays]));
+  
+  const staticHolidays = PORTUGAL_HOLIDAYS_2026.map(h => h.date);
 
-    // Fetch standalone absences (where time_log_id is null)
-    const { data: aData } = await supabase.from('absences').select('*').eq('user_id', userId).is('time_log_id', null);
-
-    return { 
-      settings: sData && sData.length > 0 ? mapSettingsFromDb(sData[0]) : null,
-      logs: (lData || []).map((l: any) => mapLogFromDb(l, l.breaks || [], l.absences || [])),
-      systemHolidays: unifiedHolidays,
-      standaloneAbsences: (aData || []).map((a: any) => ({
+  // Attempt remote fetch
+  if (isOnline()) {
+    try {
+      const { data: sData } = await supabase.from('user_settings').select('*').eq('user_id', userId).limit(1);
+      const { data: lData } = await supabase.from('time_logs').select(`*, breaks (*), absences (*)`).eq('user_id', userId).order('start_time', { ascending: true });
+      const { data: aData } = await supabase.from('absences').select('*').eq('user_id', userId).is('time_log_id', null);
+      
+      const remoteSettings = sData && sData.length > 0 ? mapSettingsFromDb(sData[0]) : null;
+      const remoteLogs = (lData || []).map((l: any) => mapLogFromDb(l, l.breaks || [], l.absences || []));
+      const remoteAbsences = (aData || []).map((a: any) => ({
         id: a.id,
         date: a.date,
         type: a.type,
@@ -292,11 +309,35 @@ export const fetchRemoteData = async (userId: string) => {
         startTime: a.start_time || undefined,
         endTime: a.end_time || undefined,
         userId: a.user_id
-      }))
-    };
-  } catch (error) {
-    return { settings: null, logs: [], systemHolidays: [], standaloneAbsences: [] };
+      }));
+
+      // Update Local cache
+      if (remoteSettings) await dbLocal.settings.put({ ...remoteSettings, user_id: userId } as any);
+      if (remoteLogs.length > 0) await dbLocal.timeLogs.bulkPut(remoteLogs.map(l => ({ ...l, user_id: userId } as any)));
+      if (remoteAbsences.length > 0) await dbLocal.absences.bulkPut(remoteAbsences);
+
+      return {
+        settings: remoteSettings,
+        logs: remoteLogs,
+        systemHolidays: staticHolidays,
+        standaloneAbsences: remoteAbsences
+      };
+    } catch (e) {
+      console.error("Remote fetch error, using local data", e);
+    }
   }
+
+  // Fallback to Local
+  const localSettings = await dbLocal.settings.get(userId);
+  const localLogs = await dbLocal.timeLogs.filter(l => (l as any).user_id === userId).toArray();
+  const localStandaloneAbsences = await dbLocal.absences.filter(a => a.userId === userId && !(a as any).time_log_id).toArray();
+
+  return { 
+    settings: localSettings || null,
+    logs: localLogs,
+    systemHolidays: staticHolidays,
+    standaloneAbsences: localStandaloneAbsences
+  };
 };
 
 export const upsertStandaloneAbsence = async (absence: Omit<import('../types').Absence, 'id'>, userId: string): Promise<{ success: boolean; error?: string }> => {
@@ -366,13 +407,39 @@ export const fetchAllJustifications = async (): Promise<any[]> => {
   }
 };
 
-export const keepAlive = async (): Promise<boolean> => {
-    try {
-        const { error } = await supabase.from('app_config').select('id').limit(1);
-        return !error;
-    } catch (e) {
-        return false;
+export const processSyncQueue = async () => {
+  if (!isOnline()) return;
+  try {
+    const queue = await dbLocal.syncQueue.toArray();
+    if (queue.length === 0) return;
+
+    for (const item of queue) {
+      let success = false;
+      if (item.type === 'LOG' && item.action === 'UPSERT') {
+        const log = item.data;
+        const res = await upsertRemoteLog(log, log.userId);
+        success = res.success;
+      } else if (item.type === 'SETTINGS' && item.action === 'UPSERT') {
+        const res = await supabase.from('user_settings').upsert(item.data, { onConflict: 'user_id' });
+        success = !res.error;
+      }
+      
+      if (success && item.id) {
+        await dbLocal.syncQueue.delete(item.id);
+      }
     }
+  } catch (e) {
+    console.error("Sync process error", e);
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => processSyncQueue());
+  processSyncQueue();
+}
+
+export const keepAlive = async (): Promise<boolean> => {
+    return isOnline(); 
 };
 
 export const verifyAdminPassword = async (password: string): Promise<{ verified: boolean, error?: string }> => {
@@ -388,39 +455,54 @@ export const verifyAdminPassword = async (password: string): Promise<{ verified:
 
 export const upsertRemoteLog = async (log: TimeLog, userId: string): Promise<{ success: boolean; error?: string }> => {
   try {
-    await supabase.from('time_logs').upsert({
-      id: log.id,
-      user_id: userId,
-      date: log.date,
-      start_time: log.startTime,
-      end_time: log.endTime || null,
-      total_duration_ms: log.totalDurationMs
-    });
+    // 1. Save Local
+    await dbLocal.timeLogs.put({ ...log, user_id: userId } as any);
+    
+    // 2. Try Remote
+    if (isOnline()) {
+      const { error } = await supabase.from('time_logs').upsert({
+        id: log.id,
+        user_id: userId,
+        date: log.date,
+        start_time: log.startTime,
+        end_time: log.endTime || null,
+        total_duration_ms: log.totalDurationMs,
+        production_box: log.productionBox || '',
+        production_infeed: log.productionInfeed || '',
+        production_picking: log.productionPicking || 0
+      });
 
-    await supabase.from('breaks').delete().eq('time_log_id', log.id);
-    if (log.breaks.length > 0) {
-      await supabase.from('breaks').insert(log.breaks.map(b => ({
-        id: b.id,
-        time_log_id: log.id,
-        start_time: b.startTime,
-        end_time: b.endTime || null,
-        type: b.type
-      })));
+      if (!error) {
+        // For children tables, we delete and re-insert for consistency
+        await supabase.from('breaks').delete().eq('time_log_id', log.id);
+        if (log.breaks.length > 0) {
+          await supabase.from('breaks').insert(log.breaks.map(b => ({
+            id: b.id,
+            time_log_id: log.id,
+            start_time: b.startTime,
+            end_time: b.endTime || null,
+            type: b.type
+          })));
+        }
+
+        await supabase.from('absences').delete().eq('time_log_id', log.id);
+        if (log.absences && log.absences.length > 0) {
+          await supabase.from('absences').insert(log.absences.map(a => ({
+            id: a.id,
+            time_log_id: log.id,
+            type: a.type,
+            reason: a.reason,
+            start_time: a.startTime || null,
+            end_time: a.endTime || null
+          })));
+        }
+        return { success: true };
+      }
     }
 
-    await supabase.from('absences').delete().eq('time_log_id', log.id);
-    if (log.absences && log.absences.length > 0) {
-      await supabase.from('absences').insert(log.absences.map(a => ({
-        id: a.id,
-        time_log_id: log.id,
-        type: a.type,
-        reason: a.reason,
-        start_time: a.startTime || null,
-        end_time: a.endTime || null
-      })));
-    }
-
-    return { success: true };
+    // 3. Queue for sync if offline or remote failed
+    await addToSyncQueue({ type: 'LOG', action: 'UPSERT', entityId: log.id, data: { ...log, userId } });
+    return { success: true }; 
   } catch (err: any) {
     return { success: false, error: err.message };
   }
@@ -428,10 +510,14 @@ export const upsertRemoteLog = async (log: TimeLog, userId: string): Promise<{ s
 
 export const deleteRemoteLog = async (id: string): Promise<{ success: boolean; error?: string }> => {
   try {
-    await supabase.from('breaks').delete().eq('time_log_id', id);
-    await supabase.from('absences').delete().eq('time_log_id', id);
-    const { error } = await supabase.from('time_logs').delete().eq('id', id);
-    if (error) throw error;
+    await dbLocal.timeLogs.delete(id);
+    if (isOnline()) {
+      await supabase.from('breaks').delete().eq('time_log_id', id);
+      await supabase.from('absences').delete().eq('time_log_id', id);
+      const { error } = await supabase.from('time_logs').delete().eq('id', id);
+      if (!error) return { success: true };
+    }
+    await addToSyncQueue({ type: 'LOG', action: 'DELETE', entityId: id, data: null });
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -439,55 +525,38 @@ export const deleteRemoteLog = async (id: string): Promise<{ success: boolean; e
 };
 
 export const saveRemoteSettings = async (settings: AppSettings, userId: string): Promise<{ success: boolean; error?: string }> => {
-  const payload = {
-    daily_work_hours: settings.dailyWorkHours,
-    lunch_duration_minutes: settings.lunchDurationMinutes,
-    coffee_duration_minutes: settings.coffeeDurationMinutes,
-    notification_minutes: settings.notificationMinutes,
-    hourly_rate: settings.hourlyRate,
-    food_allowance: settings.foodAllowance,
-    currency: settings.currency,
-    language: settings.language,
-    overtime_percentage: settings.overtimePercentage,
-    overtime_days: settings.overtimeDays || [], 
-    holidays: settings.holidays || [], 
-    social_security_rate: settings.socialSecurityRate,
-    irs_rate: settings.irsRate,
-    shift_start: settings.shiftStart,
-    shift_end: settings.shiftEnd,
-    lunch_start: settings.lunchStart,
-    enable_notifications: settings.enableNotifications,
-    reminder_buffer_minutes: settings.reminderBufferMinutes,
-    user_id: userId
-  };
   try {
-    // Tenta o upsert usando user_id como alvo do conflito
-    const { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'user_id' });
-    
-    // Se falhar por falta de constraint única, tentamos manual
-    if (error && (error.message.includes("unique or exclusion constraint") || error.code === '42P10')) {
-        const { data: existing } = await supabase
-            .from('user_settings')
-            .select('id')
-            .eq('user_id', userId)
-            .maybeSingle();
+    // Local
+    await dbLocal.settings.put({ ...settings, user_id: userId } as any);
 
-        if (existing) {
-            const { error: updateError } = await supabase
-                .from('user_settings')
-                .update(payload)
-                .eq('user_id', userId);
-            if (updateError) throw updateError;
-        } else {
-            const { error: insertError } = await supabase
-                .from('user_settings')
-                .insert(payload);
-            if (insertError) throw insertError;
-        }
-    } else if (error) {
-        throw error;
+    const payload = {
+      daily_work_hours: settings.dailyWorkHours,
+      lunch_duration_minutes: settings.lunchDurationMinutes,
+      coffee_duration_minutes: settings.coffeeDurationMinutes,
+      notification_minutes: settings.notificationMinutes,
+      hourly_rate: settings.hourlyRate,
+      food_allowance: settings.foodAllowance,
+      currency: settings.currency,
+      language: settings.language,
+      overtime_percentage: settings.overtimePercentage,
+      overtime_days: settings.overtimeDays || [], 
+      holidays: settings.holidays || [], 
+      social_security_rate: settings.socialSecurityRate,
+      irs_rate: settings.irsRate,
+      shift_start: settings.shiftStart,
+      shift_end: settings.shiftEnd,
+      lunch_start: settings.lunchStart,
+      enable_notifications: settings.enableNotifications,
+      reminder_buffer_minutes: settings.reminderBufferMinutes,
+      user_id: userId
+    };
+
+    if (isOnline()) {
+      const { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'user_id' });
+      if (!error) return { success: true };
     }
-    
+
+    await addToSyncQueue({ type: 'SETTINGS', action: 'UPSERT', entityId: userId, data: payload });
     return { success: true };
   } catch (err: any) {
     console.error("Erro em saveRemoteSettings:", err);

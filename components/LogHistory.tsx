@@ -57,11 +57,11 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
       <div className="flex items-center justify-between px-2">
          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg tracking-tight">{t('label_timeline')}</h3>
          <div className="flex items-center gap-2">
-            <button onClick={onAddManual} className="p-2.5 rounded-xl bg-white/40 dark:bg-white/5 hover:bg-white/60 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 border border-white/40 dark:border-white/10 transition-all shadow-sm active:scale-90"><PlusCircle size={20}/></button>
+            <button onClick={onAddManual} className="p-2.5 rounded-lg bg-white/40 dark:bg-white/5 hover:bg-white/60 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 border border-white/40 dark:border-white/10 transition-all shadow-sm active:scale-90"><PlusCircle size={20}/></button>
             {logs.length > 0 && (
               <>
-                <button onClick={onOpenReports} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 group"><CalendarDays size={18} className="group-hover:rotate-12 transition-transform" /><span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">{t('label_reports_portal')}</span></button>
-                <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `ponto_backup_${new Date().toISOString().split('T')[0]}.json`); dl.click(); }} className="p-2.5 rounded-xl bg-white/40 dark:bg-white/5 text-slate-400 hover:text-emerald-500 border border-white/40 transition-all active:scale-90"><Download size={20}/></button>
+                <button onClick={onOpenReports} className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 active:scale-95 group"><CalendarDays size={18} className="group-hover:rotate-12 transition-transform" /><span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">{t('label_reports_portal')}</span></button>
+                <button onClick={() => { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2)); const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `ponto_backup_${new Date().toISOString().split('T')[0]}.json`); dl.click(); }} className="p-2.5 rounded-lg bg-white/40 dark:bg-white/5 text-slate-400 hover:text-emerald-500 border border-white/40 transition-all active:scale-90"><Download size={20}/></button>
               </>
             )}
          </div>
@@ -69,8 +69,8 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
 
       <div className="space-y-4">
         {visibleHistory.length === 0 ? (
-          <div className="text-center py-24 bg-white/30 dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center">
-            <div className="w-16 h-16 bg-white/50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-4 shadow-inner"><Clock size={32} className="text-slate-300 dark:text-slate-600" /></div>
+          <div className="text-center py-24 bg-white/30 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center">
+            <div className="w-16 h-16 bg-white/50 dark:bg-slate-800/50 rounded-xl flex items-center justify-center mb-4 shadow-inner"><Clock size={32} className="text-slate-300 dark:text-slate-600" /></div>
             <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest text-[10px]">{t('label_no_logs')}</p>
           </div>
         ) : (
@@ -86,7 +86,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
             return isLog ? (
               <div 
                 key={entry.id} 
-                className={`group relative rounded-2xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden 
+                className={`group relative rounded-xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-5 backdrop-blur-md overflow-hidden 
                   ${isToday
                     ? 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-300/50 dark:border-emerald-500/40 shadow-xl shadow-emerald-500/10 ring-1 ring-emerald-500/20' 
                     : entry.id === currentLogId 
@@ -107,7 +107,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
                   <div className="flex items-center gap-5">
-                    <div className={`p-3.5 rounded-xl shadow-sm border transition-colors 
+                    <div className={`p-3.5 rounded-lg shadow-sm border transition-colors 
                       ${isToday
                         ? 'bg-emerald-600 text-white border-emerald-500 ring-4 ring-emerald-500/10'
                         : entry.id === currentLogId 
@@ -145,7 +145,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                   </div>
                   <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
                     <div className="flex flex-col items-end">
-                      <span className={`font-mono font-black px-4 py-2 rounded-xl text-base border shadow-sm 
+                      <span className={`font-mono font-black px-4 py-2 rounded-lg text-base border shadow-sm 
                          ${isToday
                           ? 'text-emerald-700 dark:text-emerald-300 bg-white/80 dark:bg-emerald-900/40 border-emerald-200/50 dark:border-emerald-700/50'
                           : isHoliday 
@@ -161,15 +161,15 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setShowConfigId(showConfigId === entry.id ? null : entry.id)} 
-                        className={`p-3 rounded-xl transition-all shadow-sm ${showConfigId === entry.id ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'}`}
+                        className={`p-3 rounded-lg transition-all shadow-sm ${showConfigId === entry.id ? 'bg-emerald-500 text-white shadow-emerald-500/30' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'}`}
                         title={t('btn_view_config')}
                       >
                         <Clock size={18} />
                       </button>
-                      <button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-emerald-500 hover:bg-white transition-all shadow-sm">
+                      <button onClick={() => onEdit(entry as any)} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-white transition-all shadow-sm">
                         <Edit3 size={18}/>
                       </button>
-                      <button onClick={() => { if(confirm("Excluir este registro permanentemente?")) onDelete(entry.id); }} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-white transition-all shadow-sm">
+                      <button onClick={() => { if(confirm("Excluir este registro permanentemente?")) onDelete(entry.id); }} className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-white transition-all shadow-sm">
                         <Trash2 size={18}/>
                       </button>
                     </div>
@@ -180,17 +180,17 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                 {showConfigId === entry.id && (
                   <div className="pt-6 border-t border-emerald-100 dark:border-emerald-900/50 space-y-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/50">
+                      <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/50">
                         <p className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-1">{t('label_goal')}</p>
                         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{settings.dailyWorkHours}h {t('label_worked')}</p>
                       </div>
-                      <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/50">
+                      <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-lg border border-emerald-100 dark:border-emerald-800/50">
                         <p className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 mb-1">{t('label_shift')}</p>
                         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{settings.shiftStart} — {settings.shiftEnd}</p>
                       </div>
                     </div>
 
-                    <div className="overflow-hidden rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                    <div className="overflow-hidden rounded-lg border border-emerald-100 dark:border-emerald-900/30">
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
                           <tr className="bg-emerald-50/30 dark:bg-emerald-900/10">
@@ -249,7 +249,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                 {(entry as TimeLog).absences && (entry as TimeLog).absences.length > 0 && (
                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 relative z-10">
                       {(entry as TimeLog).absences.map((a: any) => (
-                         <div key={a.id} className="flex flex-col gap-2 p-3 bg-rose-500/5 rounded-xl border border-rose-500/10">
+                         <div key={a.id} className="flex flex-col gap-2 p-3 bg-rose-500/5 rounded-lg border border-rose-500/10">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <MessageSquare size={12} className="text-rose-400" />
@@ -264,10 +264,10 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                 )}
               </div>
             ) : (
-                <div key={entry.id} className="group relative rounded-2xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-4 backdrop-blur-md overflow-hidden bg-rose-50/30 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/20">
+                <div key={entry.id} className="group relative rounded-xl p-5 sm:p-7 border transition-all duration-300 flex flex-col gap-4 backdrop-blur-md overflow-hidden bg-rose-50/30 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/20">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
-                            <div className="p-3.5 rounded-xl bg-rose-500 text-white shadow-lg shadow-rose-500/20"><CalendarOff size={22}/></div>
+                            <div className="p-3.5 rounded-lg bg-rose-500 text-white shadow-lg shadow-rose-500/20"><CalendarOff size={22}/></div>
                             <div>
                                 <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">{entry.date.split('-').reverse().join('/')}</p>
                                 <p className="text-xl font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
@@ -275,11 +275,11 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
                                 </p>
                             </div>
                         </div>
-                        <div className={`px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-rose-100 dark:border-rose-900/30 font-bold text-[10px] uppercase tracking-widest ${(entry as Absence).type === 'ABSENCE' ? 'text-rose-500' : 'text-amber-500'}`}>
+                        <div className={`px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-rose-100 dark:border-rose-900/30 font-bold text-[10px] uppercase tracking-widest ${(entry as Absence).type === 'ABSENCE' ? 'text-rose-500' : 'text-amber-500'}`}>
                             {(entry as Absence).type === 'ABSENCE' ? t('label_full_day') : t('label_late_entry')}
                         </div>
                     </div>
-                    <div className="bg-white/60 dark:bg-slate-800/60 p-4 rounded-xl border border-white dark:border-slate-700 italic">
+                    <div className="bg-white/60 dark:bg-slate-800/60 p-4 rounded-lg border border-white dark:border-slate-700 italic">
                         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">"{(entry as Absence).reason}"</p>
                     </div>
                     {(entry as Absence).type === 'DELAY' && (entry as Absence).startTime && (entry as Absence).endTime && (
@@ -294,7 +294,7 @@ const LogHistory: React.FC<LogHistoryProps> = ({ logs, standaloneAbsences, user,
         )}
       </div>
 
-      {(logs.length + standaloneAbsences.length) > visibleCount && (<button onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} className="w-full py-4 rounded-2xl bg-white/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] border border-white/60 dark:border-white/10 hover:bg-white/60 transition-all active:scale-[0.98] shadow-sm">{t('btn_show_more')}</button>)}
+      {(logs.length + standaloneAbsences.length) > visibleCount && (<button onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)} className="w-full py-4 rounded-xl bg-white/40 dark:bg-white/5 text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] border border-white/60 dark:border-white/10 hover:bg-white/60 transition-all active:scale-[0.98] shadow-sm">{t('btn_show_more')}</button>)}
     </div>
   );
 };

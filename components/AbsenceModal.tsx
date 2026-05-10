@@ -118,17 +118,17 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in text-left">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 dark:border-slate-700 transition-colors flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 dark:border-slate-700 transition-colors flex flex-col max-h-[90vh]">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-800 transition-colors">
           <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
-             <div className="p-2 bg-rose-50 dark:bg-rose-900/30 rounded-xl">
+             <div className="p-2 bg-rose-50 dark:bg-rose-900/30 rounded-lg">
                 <CalendarOff className="text-rose-500 dark:text-rose-400" size={18} />
              </div>
              Justificativa de Ocorrência
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 p-2 rounded-xl transition-all">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 p-2 rounded-lg transition-all">
             <X size={20} />
           </button>
         </div>
@@ -159,13 +159,13 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
           {activeTab === 'NEW' ? (
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Tipo de Ocorrência */}
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl shadow-inner transition-colors">
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg shadow-inner transition-colors">
                 {(['ABSENCE', 'DELAY', 'PARTIAL', 'FULL_DAY'] as const).map((t) => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setType(t)}
-                    className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all duration-200 ${type === t ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                    className={`flex-1 py-2 text-[10px] font-bold rounded-md transition-all duration-200 ${type === t ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                   >
                     {t === 'ABSENCE' ? 'Falta' : t === 'DELAY' ? 'Atraso' : t === 'PARTIAL' ? 'Parcial' : 'Integral'}
                   </button>
@@ -173,7 +173,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
               </div>
 
               {/* Data da Ocorrência */}
-              <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 transition-all">
+              <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700 transition-all">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                   <Calendar size={12}/> Data da Ocorrência
                 </label>
@@ -187,7 +187,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
               </div>
 
               {/* Justificativa */}
-              <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 transition-all">
+              <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700 focus-within:border-emerald-200 dark:focus-within:border-emerald-800 transition-all">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                   <FileText size={12} className="text-slate-400"/>
                   Justificativa / Observação
@@ -204,7 +204,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
               {/* Horários */}
               {(type === 'DELAY' || type === 'PARTIAL') && (
                 <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                    <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
                         <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Clock size={10}/> Início/Esperado</label>
                         <input 
                             type="time" 
@@ -214,7 +214,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
                             required
                         />
                     </div>
-                    <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                    <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
                         <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1"><Clock size={10}/> Fim/Chegada</label>
                         <input 
                             type="time" 
@@ -231,14 +231,14 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-bold transition-colors text-xs uppercase tracking-widest"
+                  className="px-5 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg font-bold transition-colors text-xs uppercase tracking-widest"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-8 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 hover:shadow-lg transition-all flex items-center gap-2 text-xs uppercase tracking-widest active:scale-95 shadow-md shadow-emerald-500/20 disabled:opacity-50"
+                  className="px-8 py-2.5 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700 hover:shadow-lg transition-all flex items-center gap-2 text-xs uppercase tracking-widest active:scale-95 shadow-md shadow-emerald-500/20 disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                   {editingId ? 'Atualizar Justificativa' : 'Salvar Justificativa'}
@@ -248,7 +248,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
           ) : (
             <div className="space-y-4">
               {existingAbsences.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl">
+                <div className="text-center py-12 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl">
                   <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                     <History className="text-slate-300" size={32} />
                   </div>
@@ -256,7 +256,7 @@ const AbsenceModal: React.FC<AbsenceModalProps> = ({
                 </div>
               ) : (
                 existingAbsences.slice().sort((a, b) => b.date.localeCompare(a.date)).map((abs) => (
-                  <div key={abs.id} className="group p-4 bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md transition-all">
+                  <div key={abs.id} className="group p-4 bg-slate-50/50 dark:bg-slate-800/40 rounded-lg border border-slate-100/50 dark:border-slate-700/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md transition-all">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg bg-white dark:bg-slate-700 shadow-sm ${

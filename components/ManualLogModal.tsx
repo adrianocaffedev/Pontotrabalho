@@ -242,20 +242,20 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in text-left">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 dark:border-slate-700 transition-colors">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20 dark:border-slate-700 transition-colors">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
           <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 flex items-center gap-2">
              {initialLog ? <Edit3 className="text-emerald-500 dark:text-emerald-400" size={20} /> : <PlusCircle className="text-emerald-500 dark:text-emerald-400" size={20} />}
              {initialLog ? 'Editar Registro' : 'Adicionar Registro Manual'}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 p-2 rounded-xl transition-all">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 p-2 rounded-lg transition-all">
             <X size={20} />
           </button>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Date Input */}
-          <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+          <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
               <Calendar size={16} className="text-slate-400"/>
               Data do Registro
@@ -271,7 +271,7 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
 
           {/* Work Times */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+            <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Entrada</label>
                 <input 
                     type="time" 
@@ -281,7 +281,7 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
                     required 
                 />
             </div>
-            <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+            <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Saída</label>
                 <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-transparent outline-none font-mono font-bold text-slate-700 dark:text-slate-200 text-lg dark:[color-scheme:dark]" required />
             </div>
@@ -292,22 +292,22 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
             <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider pl-1">Intervalos (Opcional)</h4>
              {/* Lunch Times */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-100 dark:border-amber-900/30">
                     <label className="block text-xs font-bold text-amber-600 dark:text-amber-400/80 mb-1">Início Almoço</label>
                     <input type="time" value={lunchStartTime} onChange={handleLunchStartTimeChange} className="w-full bg-transparent outline-none font-mono font-bold text-amber-800 dark:text-amber-300 text-lg dark:[color-scheme:dark]" />
                 </div>
-                <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-100 dark:border-amber-900/30">
                     <label className="block text-xs font-bold text-amber-600 dark:text-amber-400/80 mb-1">Fim Almoço</label>
                     <input type="time" value={lunchEndTime} onChange={(e) => setLunchEndTime(e.target.value)} className="w-full bg-transparent outline-none font-mono font-bold text-amber-800 dark:text-amber-300 text-lg dark:[color-scheme:dark]" />
                 </div>
             </div>
             {/* Coffee Times */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-teal-50/50 dark:bg-teal-900/20 p-3 rounded-xl border border-teal-100 dark:border-teal-900/30">
+                <div className="bg-teal-50/50 dark:bg-teal-900/20 p-3 rounded-lg border border-teal-100 dark:border-teal-900/30">
                     <label className="block text-xs font-bold text-teal-600 dark:text-teal-400/80 mb-1">Início Café</label>
                     <input type="time" value={coffeeStartTime} onChange={handleCoffeeStartTimeChange} className="w-full bg-transparent outline-none font-mono font-bold text-teal-800 dark:text-teal-300 text-lg dark:[color-scheme:dark]" />
                 </div>
-                <div className="bg-teal-50/50 dark:bg-teal-900/20 p-3 rounded-xl border border-teal-100 dark:border-teal-900/30">
+                <div className="bg-teal-50/50 dark:bg-teal-900/20 p-3 rounded-lg border border-teal-100 dark:border-teal-900/30">
                     <label className="block text-xs font-bold text-teal-600 dark:text-teal-400/80 mb-1">Fim Café</label>
                     <input type="time" value={coffeeEndTime} onChange={(e) => setCoffeeEndTime(e.target.value)} className="w-full bg-transparent outline-none font-mono font-bold text-teal-800 dark:text-teal-300 text-lg dark:[color-scheme:dark]" />
                 </div>
@@ -317,10 +317,10 @@ const ManualLogModal: React.FC<ManualLogModalProps> = ({ isOpen, onClose, onSave
           {error && <p className="text-sm text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 p-3 rounded-lg text-center font-medium">{error}</p>}
 
           <div className="pt-5 flex justify-end gap-3 border-t border-gray-100 dark:border-slate-800">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-bold transition-colors text-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg font-bold transition-colors text-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
               Cancelar
             </button>
-            <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center gap-2 text-sm active:scale-95 shadow-md">
+            <button type="submit" className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-bold hover:shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center gap-2 text-sm active:scale-95 shadow-md">
               <Save size={18} />
               {initialLog ? 'Salvar Alterações' : 'Salvar Registro'}
             </button>

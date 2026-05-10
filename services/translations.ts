@@ -92,7 +92,12 @@ export const translations = {
     cat_other: 'Outro',
     empty_docs: 'Nenhum documento encontrado.',
     upload_success: 'Upload realizado com sucesso!',
-    delete_confirm_doc: 'Tem certeza que deseja excluir este documento?'
+    delete_confirm_doc: 'Tem certeza que deseja excluir este documento?',
+    label_production: 'Produção Diária',
+    label_box: 'Box',
+    label_infeed: 'Infeed',
+    label_picking_quantity: 'Quantidade Picking',
+    btn_save_production: 'Salvar Produção',
   },
   'pt-PT': {
     status_idle: 'Disponível',
@@ -186,7 +191,12 @@ export const translations = {
     cat_other: 'Outro',
     empty_docs: 'Nenhum documento encontrado.',
     upload_success: 'Upload realizado com sucesso!',
-    delete_confirm_doc: 'Tem a certeza que deseja eliminar este documento?'
+    delete_confirm_doc: 'Tem a certeza que deseja eliminar este documento?',
+    label_production: 'Produção Diária',
+    label_box: 'Box',
+    label_infeed: 'Infeed',
+    label_picking_quantity: 'Quantidade Picking',
+    btn_save_production: 'Guardar Produção',
   },
   'en': {
     status_idle: 'Idle',
@@ -280,7 +290,12 @@ export const translations = {
     cat_other: 'Other',
     empty_docs: 'No documents found.',
     upload_success: 'Upload successful!',
-    delete_confirm_doc: 'Are you sure you want to delete this document?'
+    delete_confirm_doc: 'Are you sure you want to delete this document?',
+    label_production: 'Daily Production',
+    label_box: 'Box',
+    label_infeed: 'Infeed',
+    label_picking_quantity: 'Picking Quantity',
+    btn_save_production: 'Save Production',
   }
 };
 

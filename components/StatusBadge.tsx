@@ -38,7 +38,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {
   const current = config[status] || config[WorkStatus.IDLE];
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-1 rounded-xl border text-xs font-bold transition-all duration-300 ${current.style} backdrop-blur-md shadow-sm`}>
+    <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-bold transition-all duration-300 ${current.style} backdrop-blur-md shadow-sm`}>
       <span className={`w-1.5 h-1.5 rounded-full ${current.dot}`}></span>
       <span>{current.label}</span>
     </div>

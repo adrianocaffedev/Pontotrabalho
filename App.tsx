@@ -9,8 +9,9 @@ import SettingsModal from './components/SettingsModal';
 import ReportsPortal from './components/ReportsPortal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
+import ProductionModal from './components/ProductionModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp, Package } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
@@ -46,7 +47,7 @@ const generateId = () => {
 
 const Signature = () => (
     <div className="flex justify-center mt-8 animate-in fade-in slide-in-from-bottom-2 duration-1000 delay-500">
-        <div className="inline-flex items-center gap-3 px-5 py-2 rounded-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-900/50 group cursor-default">
+        <div className="inline-flex items-center gap-3 px-5 py-2 rounded-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-900/50 group cursor-default">
             <span className="text-emerald-600 dark:text-emerald-400 font-bold tracking-tighter text-sm">{"</>"}</span>
             <span className="text-[10px] font-extrabold text-slate-600 dark:text-slate-400 uppercase tracking-[0.2em]">Por Adriano Caffé</span>
         </div>
@@ -55,7 +56,7 @@ const Signature = () => (
 
 const StatCard = ({ icon: Icon, label, value, subValue, active, colorClass, delay }: any) => (
     <div 
-        className={`relative overflow-hidden p-4 sm:p-6 rounded-xl border backdrop-blur-xl transition-all duration-500 group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards
+        className={`relative overflow-hidden p-4 sm:p-6 rounded-lg border backdrop-blur-xl transition-all duration-500 group animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards
         ${active 
             ? 'bg-white/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 shadow-lg shadow-emerald-500/10' 
             : 'bg-white/30 dark:bg-slate-900/30 border-white/40 dark:border-white/5 hover:bg-white/50 dark:hover:bg-slate-800/40 hover:border-white/60 dark:hover:border-slate-700 hover:-translate-y-1 hover:shadow-lg'}
@@ -100,6 +101,7 @@ const App: React.FC = () => {
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [isAbsenceModalOpen, setIsAbsenceModalOpen] = useState(false);
   const [isManualLogModalOpen, setIsManualLogModalOpen] = useState(false);
+  const [isProductionModalOpen, setIsProductionModalOpen] = useState(false);
   const [standaloneAbsences, setStandaloneAbsences] = useState<Absence[]>([]);
   const [editingLog, setEditingLog] = useState<TimeLog | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -519,6 +521,29 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveProduction = async (data: { date: string; box: string; infeed: string; picking: number }) => {
+    if (!activeUser) return;
+    
+    const existingLog = logs.find(l => l.date === data.date);
+    if (!existingLog) {
+      alert("Não foi encontrado um registro de ponto para esta data. Inicie a jornada primeiro.");
+      return;
+    }
+
+    const updatedLog = {
+      ...existingLog,
+      productionBox: data.box,
+      productionInfeed: data.infeed,
+      productionPicking: data.picking
+    };
+
+    setLogs(prev => prev.map(l => l.id === updatedLog.id ? updatedLog : l));
+    const result = await upsertRemoteLog(updatedLog, activeUser.id);
+    if (!result.success) {
+      alert("Erro ao salvar produção: " + result.error);
+    }
+  };
+
   const todayLog = logs.find(l => l.date === getLocalDateString(now));
   const workedMs = todayLog ? (() => {
       let total = (todayLog.endTime ? new Date(todayLog.endTime).getTime() : now.getTime()) - new Date(todayLog.startTime).getTime();
@@ -547,7 +572,7 @@ const App: React.FC = () => {
                     <p className="text-slate-500 dark:text-slate-400 font-medium">Controle de jornada seguro</p>
                 </div>
 
-                <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl p-8 rounded-2xl border border-white dark:border-slate-800 shadow-2xl relative">
+                <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl p-8 rounded-lg border border-white dark:border-slate-800 shadow-2xl relative">
                     <div className="space-y-6">
                         {/* Campo de Nome com Sugestões */}
                         <div className="relative">
@@ -562,18 +587,18 @@ const App: React.FC = () => {
                                     onChange={e => { setSearchName(e.target.value); setShowSuggestions(true); setSelectedLoginUser(null); }}
                                     onFocus={() => setShowSuggestions(true)}
                                     placeholder="Comece a digitar seu nome..."
-                                    className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-bold dark:text-white outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-all text-lg"
+                                    className="w-full p-4 pl-12 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-lg font-bold dark:text-white outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-all text-lg"
                                 />
                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-emerald-500 transition-colors" size={20} />
                                 {showSuggestions && searchName && filteredSuggestions.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-md shadow-xl border border-slate-100 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                                         {filteredSuggestions.map(user => (
                                             <button 
                                                 key={user.id} 
                                                 onClick={() => { setSearchName(user.name); setSelectedLoginUser(user); setShowSuggestions(false); setPinBuffer(''); }}
                                                 className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-emerald-500/10 border-b last:border-0 border-slate-100 dark:border-slate-700 transition-colors"
                                             >
-                                                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center font-bold text-[10px] uppercase">{user.name.substring(0,2)}</div>
+                                                <div className="w-8 h-8 rounded-md bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center font-bold text-[10px] uppercase">{user.name.substring(0,2)}</div>
                                                 <div className="text-left flex-1">
                                                     <p className="font-bold text-slate-800 dark:text-white text-sm leading-tight">{user.name}</p>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase">{user.company}</p>
@@ -607,7 +632,7 @@ const App: React.FC = () => {
                                             else if (key === '←') setPinBuffer(p => p.slice(0, -1));
                                             else handlePinInput(key.toString());
                                         }}
-                                        className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl transition-all shadow-sm border
+                                        className={`w-16 h-16 rounded-lg flex items-center justify-center font-bold text-xl transition-all shadow-sm border
                                             ${key === '' ? 'opacity-0 pointer-events-none' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-800 dark:text-white border-slate-100/50 dark:border-slate-700/50 hover:bg-emerald-600 hover:text-white active:scale-90 hover:shadow-emerald-500/20'}
                                         `}
                                     >
@@ -621,7 +646,7 @@ const App: React.FC = () => {
                     <div className="mt-8 pt-6 border-t dark:border-slate-800 flex justify-center">
                         <button 
                             onClick={() => setIsSettingsOpen(true)} 
-                            className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-slate-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90"
+                            className="p-4 rounded-md bg-slate-100 dark:bg-slate-800/50 text-slate-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm active:scale-90"
                             title="Configurações Admin"
                         >
                             <SettingsIcon size={20} />
@@ -645,7 +670,7 @@ const App: React.FC = () => {
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-8 flex flex-col min-h-screen">
         <header className="flex flex-col sm:flex-row justify-between items-center mb-8 sm:mb-12 gap-6">
           <div className="flex items-center gap-3">
-             <div className="bg-white dark:bg-slate-800/50 p-2 sm:p-3 rounded-full shadow-lg border border-slate-100 dark:border-white/10 shadow-emerald-500/5">
+             <div className="bg-white dark:bg-slate-800/50 p-2 sm:p-3 rounded-lg shadow-lg border border-slate-100 dark:border-white/10 shadow-emerald-500/5">
                 <ClockIcon size={24} className="text-emerald-600 dark:text-emerald-400" />
              </div>
              <div>
@@ -658,21 +683,22 @@ const App: React.FC = () => {
              {deferredPrompt && (
                 <button 
                   onClick={handleInstallClick} 
-                  className="flex items-center gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
+                  className="flex items-center gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-lg bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider active:scale-95 transition-all animate-bounce-subtle"
                   title="Instalar Aplicação"
                 >
                    <Download size={16} /> <span>Instalar App</span>
                 </button>
              )}
-             <div className="flex items-center px-3 py-2 rounded-xl bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm" title={dbConnected ? 'Conectado' : 'Desconectado'}>
+             <div className="flex items-center px-3 py-2 rounded-md bg-white/40 dark:bg-white/5 border border-white/40 dark:border-white/10 backdrop-blur-sm shadow-sm" title={dbConnected ? 'Conectado' : 'Desconectado'}>
                 <Database size={16} className={dbConnected ? "text-emerald-500" : "text-rose-500"} />
              </div>
-             <button onClick={toggleTheme} className="p-2 sm:p-3 rounded-full bg-white/40 dark:bg-white/5 border-b-2 border-slate-300 dark:border-slate-800 hover:bg-white/80 active:border-b-0 active:translate-y-[2px] transition-all text-slate-600 dark:text-slate-400 shadow-sm"><Sun size={18}/></button>
-             <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-b-2 border-rose-200 dark:border-rose-900/50 active:border-b-0 active:translate-y-[2px] text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
+             <button onClick={toggleTheme} className="p-2 sm:p-3 rounded-lg bg-white/40 dark:bg-white/5 border-b-2 border-slate-300 dark:border-slate-800 hover:bg-white/80 active:border-b-0 active:translate-y-[2px] transition-all text-slate-600 dark:text-slate-400 shadow-sm"><Sun size={18}/></button>
+             <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-b-2 border-rose-200 dark:border-rose-900/50 active:border-b-0 active:translate-y-[2px] text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
                 <LogOut size={16} /> <span className="hidden sm:inline">Sair</span>
              </button>
-             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-full bg-emerald-500 text-white shadow-[0_4px_0_0_#065f46] active:shadow-none active:translate-y-[4px] transition-all" title="Relatórios"><TrendingUp size={18}/></button>
-             <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-full bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:shadow-none active:translate-y-[4px] shadow-[0_4px_0_0_#0f172a] dark:shadow-[0_4px_0_0_#cbd5e1] transition-all" title="Configurações"><SettingsIcon size={18}/></button>
+             <button onClick={() => setIsProductionModalOpen(true)} className="p-2 sm:p-3 rounded-lg bg-amber-500 text-white shadow-[0_4px_0_0_#92400e] active:shadow-none active:translate-y-[4px] transition-all" title={t('label_production')}><Package size={18}/></button>
+             <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-lg bg-emerald-500 text-white shadow-[0_4px_0_0_#065f46] active:shadow-none active:translate-y-[4px] transition-all" title="Relatórios"><TrendingUp size={18}/></button>
+             <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-lg bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:shadow-none active:translate-y-[4px] shadow-[0_4px_0_0_#0f172a] dark:shadow-[0_4px_0_0_#cbd5e1] transition-all" title="Configurações"><SettingsIcon size={18}/></button>
           </div>
         </header>
 
@@ -694,13 +720,13 @@ const App: React.FC = () => {
                     <div className="mt-8 flex items-center gap-6">
                         {status === WorkStatus.IDLE || status === WorkStatus.FINISHED ? (
                             <div className="flex flex-col items-center gap-6">
-                                <button onClick={handleStartWork} className="w-28 h-28 rounded-full bg-emerald-600 text-white shadow-[0_8px_0_0_#065f46] shadow-emerald-900/50 flex items-center justify-center hover:bg-emerald-500 active:shadow-none active:translate-y-[8px] transition-all relative group">
+                                <button onClick={handleStartWork} className="w-20 h-20 rounded-full bg-emerald-600 text-white shadow-[0_6px_0_0_#065f46] shadow-emerald-900/50 flex items-center justify-center hover:bg-emerald-500 active:shadow-none active:translate-y-[6px] transition-all relative group">
                                     <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                                    <Play size={36} className="ml-1 fill-current" />
+                                    <Play size={28} className="ml-1 fill-current" />
                                 </button>
                                 <button 
                                     onClick={() => setIsAbsenceModalOpen(true)} 
-                                    className="px-6 py-3 rounded-full bg-white/40 dark:bg-white/5 border-b-2 border-slate-200 dark:border-slate-800 hover:bg-white/80 dark:hover:bg-white/10 active:border-b-0 active:translate-y-[2px] text-slate-600 dark:text-slate-400 transition-all font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm"
+                                    className="px-6 py-3 rounded-lg bg-white/40 dark:bg-white/5 border-b-2 border-slate-200 dark:border-slate-800 hover:bg-white/80 dark:hover:bg-white/10 active:border-b-0 active:translate-y-[2px] text-slate-600 dark:text-slate-400 transition-all font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-sm"
                                 >
                                     <CalendarOff size={14} className="text-rose-500" /> {t('settings_justifications')}
                                 </button>
@@ -709,14 +735,14 @@ const App: React.FC = () => {
                             <div className="flex gap-6 items-center">
                                 {status === WorkStatus.WORKING && (
                                     <>
-                                        <button onClick={() => handleStartBreak('LUNCH')} className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 border-b-4 border-amber-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-amber-50 transition-all" title={t('btn_lunch')}><Utensils size={24}/></button>
-                                        <button onClick={() => handleStartBreak('COFFEE')} className="w-16 h-16 rounded-full bg-teal-100 text-teal-600 border-b-4 border-teal-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-teal-50 transition-all" title={t('btn_coffee')}><Coffee size={24}/></button>
+                                        <button onClick={() => handleStartBreak('LUNCH')} className="w-16 h-16 rounded-lg bg-amber-100 text-amber-600 border-b-4 border-amber-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-amber-50 transition-all" title={t('btn_lunch')}><Utensils size={24}/></button>
+                                        <button onClick={() => handleStartBreak('COFFEE')} className="w-16 h-16 rounded-lg bg-teal-100 text-teal-600 border-b-4 border-teal-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-teal-50 transition-all" title={t('btn_coffee')}><Coffee size={24}/></button>
                                     </>
                                 )}
                                 {(status === WorkStatus.ON_LUNCH || status === WorkStatus.ON_COFFEE) && (
-                                    <button onClick={handleEndBreak} className="w-24 h-24 rounded-full bg-emerald-500 text-white shadow-[0_8px_0_0_#064e3b] active:shadow-none active:translate-y-[8px] flex items-center justify-center hover:bg-emerald-400 transition-all" title={t('btn_return')}><PlayCircle size={32}/></button>
+                                    <button onClick={handleEndBreak} className="w-20 h-20 rounded-full bg-emerald-500 text-white shadow-[0_6px_0_0_#064e3b] active:shadow-none active:translate-y-[6px] flex items-center justify-center hover:bg-emerald-400 transition-all" title={t('btn_return')}><PlayCircle size={28}/></button>
                                 )}
-                                <button onClick={handleEndWork} className="w-16 h-16 rounded-full bg-rose-100 text-rose-600 border-b-4 border-rose-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-rose-50 transition-all" title={t('btn_stop')}><StopCircle size={24}/></button>
+                                <button onClick={handleEndWork} className="w-16 h-16 rounded-lg bg-rose-100 text-rose-600 border-b-4 border-rose-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-rose-50 transition-all" title={t('btn_stop')}><StopCircle size={24}/></button>
                             </div>
                         )}
                     </div>
@@ -764,6 +790,7 @@ const App: React.FC = () => {
         onRefresh={loadUserData}
       />
       <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} settings={settings} />
+      <ProductionModal isOpen={isProductionModalOpen} onClose={() => setIsProductionModalOpen(false)} onSave={handleSaveProduction} logs={logs} settings={settings} />
     </div>
   );
 };
