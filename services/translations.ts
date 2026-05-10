@@ -98,6 +98,10 @@ export const translations = {
     label_infeed: 'Infeed',
     label_picking_quantity: 'Quantidade Picking',
     btn_save_production: 'Salvar Produção',
+    label_limit_exceeded: 'Limite Excedido!',
+    label_exceeded_by: 'Excedido em',
+    label_minutes: 'minutos',
+    btn_return_now: 'Voltar Agora',
   },
   'pt-PT': {
     status_idle: 'Disponível',
@@ -197,6 +201,10 @@ export const translations = {
     label_infeed: 'Infeed',
     label_picking_quantity: 'Quantidade Picking',
     btn_save_production: 'Guardar Produção',
+    label_limit_exceeded: 'Limite Excedido!',
+    label_exceeded_by: 'Excedido em',
+    label_minutes: 'minutos',
+    btn_return_now: 'Voltar Agora',
   },
   'en': {
     status_idle: 'Idle',
@@ -296,6 +304,10 @@ export const translations = {
     label_infeed: 'Infeed',
     label_picking_quantity: 'Picking Quantity',
     btn_save_production: 'Save Production',
+    label_limit_exceeded: 'Limit Exceeded!',
+    label_exceeded_by: 'Exceeded by',
+    label_minutes: 'minutes',
+    btn_return_now: 'Return Now',
   }
 };
 

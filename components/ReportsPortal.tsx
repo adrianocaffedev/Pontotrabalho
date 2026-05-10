@@ -266,10 +266,16 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const boxDistribution: Record<string, number> = {};
         const infeedDistribution: Record<string, number> = {};
         let totalPicking = 0;
+        let totalWorkedMs = 0;
 
         logs.forEach(log => {
             const picking = log.production_picking || 0;
             totalPicking += picking;
+            
+            // Only count time if there was production recorded that day
+            if (picking > 0) {
+                totalWorkedMs += (Number(log.total_duration_ms) || 0);
+            }
 
             dailyData.push({
                 date: log.date.split('-').reverse().slice(0, 2).join('/'),
@@ -288,13 +294,16 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
 
         const boxData = Object.entries(boxDistribution).map(([name, value]) => ({ name, value }));
         const infeedData = Object.entries(infeedDistribution).map(([name, value]) => ({ name, value }));
+        const totalHours = totalWorkedMs / 3600000;
 
         return {
             dailyData,
             boxData,
             infeedData,
             totalPicking,
-            avgPicking: totalPicking / logs.length
+            avgPicking: totalPicking / (logs.filter(l => l.production_picking > 0).length || 1),
+            totalHours,
+            pickingPerHour: totalHours > 0 ? totalPicking / totalHours : 0
         };
     }, [logs]);
 
@@ -872,7 +881,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                     ) : (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
                             {/* Production Stats Summary */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 p-6 rounded-lg border border-amber-500/10">
                                     <div className="flex items-center gap-2 text-amber-400 mb-2">
                                         <Package size={16} />
@@ -880,6 +889,14 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     </div>
                                     <p className="text-3xl font-black text-white">{productionStats?.totalPicking.toLocaleString() || 0}</p>
                                     <p className="text-[10px] text-slate-500 mt-1">Peças no período</p>
+                                </div>
+                                <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 rounded-lg border border-emerald-500/10 shadow-lg shadow-emerald-500/10">
+                                    <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                                        <Clock size={16} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Peças por Hora</span>
+                                    </div>
+                                    <p className="text-3xl font-black text-white">{(productionStats?.pickingPerHour || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Média de velocidade</p>
                                 </div>
                                 <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/5 p-6 rounded-lg border border-blue-500/10">
                                     <div className="flex items-center gap-2 text-blue-400 mb-2">

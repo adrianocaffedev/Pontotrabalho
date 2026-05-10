@@ -11,7 +11,7 @@ import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import ProductionModal from './components/ProductionModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp, Package } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp, Package, ShieldAlert } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
@@ -227,31 +227,41 @@ const App: React.FC = () => {
   }, [loadUserData]);
 
 
-  const [alarmTriggered, setAlarmTriggered] = useState(false);
-  const lastReminderTimeRef = useRef<string | null>(null);
-  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [isBreakLimitExceeded, setIsBreakLimitExceeded] = useState(false);
+    const [exceededTime, setExceededTime] = useState(0);
+    const [alarmTriggered, setAlarmTriggered] = useState(false);
+    const lastReminderTimeRef = useRef<string | null>(null);
+    const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const playNotificationSound = () => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+    const playNotificationSound = (isUrgent = false) => {
+        try {
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            
+            const playBeep = (freq: number, startTime: number, duration: number) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, startTime);
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+                oscillator.start(startTime);
+                oscillator.stop(startTime + duration);
+            };
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
-      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.5, audioContext.currentTime + 0.1);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 1);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 1);
-    } catch (e) {
-      console.error("Erro ao reproduzir som:", e);
-    }
-  };
+            if (isUrgent) {
+                // Play double beep for urgent alerts
+                playBeep(880, audioContext.currentTime, 0.3);
+                playBeep(880, audioContext.currentTime + 0.4, 0.3);
+            } else {
+                playBeep(660, audioContext.currentTime, 0.5);
+            }
+        } catch (e) {
+            console.error("Erro ao reproduzir som:", e);
+        }
+    };
 
   const sendSmartNotification = (titleKey: TranslationKey, bodyKey: TranslationKey) => {
     const timeKey = `${now.getHours()}:${now.getMinutes()}`;
@@ -320,21 +330,39 @@ const App: React.FC = () => {
                 const lastBreak = currentLog.breaks[currentLog.breaks.length - 1];
                 if (lastBreak && !lastBreak.endTime) {
                     const breakStartTime = new Date(lastBreak.startTime).getTime();
-                    const limit = lastBreak.type === 'LUNCH' ? settings.lunchDurationMinutes : settings.coffeeDurationMinutes;
-                    const notifyAt = breakStartTime + ((limit - buffer) * 60 * 1000);
+                    const limitMinutes = lastBreak.type === 'LUNCH' ? settings.lunchDurationMinutes : settings.coffeeDurationMinutes;
+                    const limitMs = limitMinutes * 60 * 1000;
+                    const timeElapsedMs = Date.now() - breakStartTime;
                     
-                    if (Date.now() >= notifyAt && !alarmTriggered) {
+                    // Notificação de Buffer (Antes do limite)
+                    const notifyBufferAt = breakStartTime + ((limitMinutes - buffer) * 60 * 1000);
+                    if (Date.now() >= notifyBufferAt && !alarmTriggered && timeElapsedMs < limitMs) {
                         sendSmartNotification('notif_lunch_end_title', 'notif_lunch_end_body');
                         setAlarmTriggered(true);
                     }
+
+                    // Notificação de Limite Excedido (Real-time visual alert)
+                    if (timeElapsedMs > limitMs) {
+                        setIsBreakLimitExceeded(true);
+                        setExceededTime(Math.floor((timeElapsedMs - limitMs) / 60000));
+                        
+                        // Som de alerta a cada minuto excedido
+                        const secondsSinceLimit = Math.floor((timeElapsedMs - limitMs) / 1000);
+                        if (secondsSinceLimit % 60 === 0 && settings.enableNotifications) {
+                            playNotificationSound(true);
+                        }
+                    } else {
+                        setIsBreakLimitExceeded(false);
+                    }
                 }
             }
-        } else if (alarmTriggered) {
-            setAlarmTriggered(false);
+        } else {
+            if (alarmTriggered) setAlarmTriggered(false);
+            if (isBreakLimitExceeded) setIsBreakLimitExceeded(false);
         }
     };
 
-    const interval = setInterval(checkTimers, 30000); // Checa a cada 30 segundos
+    const interval = setInterval(checkTimers, 1000); // Checa a cada segundo para precisão do alerta de limite
     checkTimers();
     return () => clearInterval(interval);
   }, [status, now, settings, activeUser, logs, currentLogId, alarmTriggered]);
@@ -706,6 +734,25 @@ const App: React.FC = () => {
             <div className="flex-1 flex items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-emerald-500" size={40} /></div>
         ) : (
             <main className="flex-1 space-y-8 animate-in fade-in duration-700">
+                {isBreakLimitExceeded && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] w-[90%] max-w-sm animate-in slide-in-from-bottom-10">
+                        <div className="bg-rose-600 text-white p-4 rounded-lg shadow-2xl flex items-center gap-4 border-2 border-white/20 animate-pulse">
+                            <div className="bg-white/20 p-2 rounded-md">
+                                <ShieldAlert size={24} className="text-white" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-xs font-bold uppercase tracking-widest leading-none mb-1">{t('label_limit_exceeded')}</h3>
+                                <p className="text-[10px] font-medium opacity-90">{t('label_exceeded_by')} {exceededTime} {t('label_minutes')}.</p>
+                            </div>
+                            <button 
+                                onClick={handleEndBreak}
+                                className="bg-white text-rose-600 px-3 py-2 rounded-md font-extrabold text-[10px] uppercase tracking-wider hover:bg-rose-50 transition-colors shadow-sm"
+                            >
+                                {t('btn_return_now')}
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <div className="flex flex-col items-center relative">
                     <div className="absolute top-0 right-0">
                         <StatusBadge status={status} label={

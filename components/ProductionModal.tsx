@@ -20,6 +20,7 @@ const ProductionModal: React.FC<ProductionModalProps> = ({ isOpen, onClose, onSa
   const [infeed, setInfeed] = useState<string>('');
   const [picking, setPicking] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const t = (key: TranslationKey) => getTranslation(settings.language || 'pt-PT', key);
 
@@ -70,7 +71,15 @@ const ProductionModal: React.FC<ProductionModalProps> = ({ isOpen, onClose, onSa
         infeed,
         picking
       });
-      onClose();
+      
+      // Show success feedback
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+      
+      // Reset picking for the next entry, but keep others as they likely repeat
+      setPicking(0);
+      
+      // Notice: we no longer call onClose() here!
     } catch (error) {
       console.error("Error saving production:", error);
     } finally {
@@ -166,11 +175,30 @@ const ProductionModal: React.FC<ProductionModalProps> = ({ isOpen, onClose, onSa
         <div className="p-6 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
           <button 
             onClick={handleSave}
-            disabled={isSaving}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+            disabled={isSaving || picking <= 0}
+            className={`w-full py-4 rounded-lg font-bold shadow-lg flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${
+                showSuccess 
+                    ? 'bg-emerald-500 text-white' 
+                    : 'bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white shadow-emerald-600/20'
+            }`}
           >
-            {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-            {t('btn_save_production')}
+            {isSaving ? (
+                <Loader2 className="animate-spin" size={20} />
+            ) : showSuccess ? (
+                <div className="flex items-center gap-2 animate-in zoom-in-95">
+                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    Registo Guardado com Sucesso!
+                </div>
+            ) : (
+                <>
+                    <Save size={20} />
+                    {t('btn_save_production')}
+                </>
+            )}
           </button>
         </div>
       </div>
