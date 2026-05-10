@@ -1,12 +1,29 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff, CalendarRange, Files, ShieldAlert, Utensils } from 'lucide-react';
+import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff, CalendarRange, Files, ShieldAlert, Utensils, Package, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { AppSettings, AppUser, TimeLog, Absence } from '../types';
 import { supabase } from '../services/supabase';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getTranslation, TranslationKey } from '../services/translations';
 import { getHolidayByDate, getHolidayColorClasses } from '../services/holidayService';
+import { 
+    BarChart, 
+    Bar, 
+    XAxis, 
+    YAxis, 
+    CartesianGrid, 
+    Tooltip, 
+    Legend, 
+    ResponsiveContainer, 
+    PieChart, 
+    Pie, 
+    Cell,
+    LineChart,
+    Line,
+    AreaChart,
+    Area
+} from 'recharts';
 
 interface ReportsPortalProps {
     isOpen: boolean;
@@ -22,6 +39,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
     const [absences, setAbsences] = useState<any[]>([]);
     const [users, setUsers] = useState<AppUser[]>([]);
     const [settingsMap, setSettingsMap] = useState<Record<string, AppSettings>>({});
+    const [activeTab, setActiveTab] = useState<'ponto' | 'producao'>('ponto');
     
     // Filtros
     const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || '');
@@ -240,6 +258,45 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             isTemporary
         };
     }, [logs, settingsMap, selectedUserId, users, startDate, systemHolidays]);
+
+    const productionStats = useMemo(() => {
+        if (logs.length === 0) return null;
+
+        const dailyData: any[] = [];
+        const boxDistribution: Record<string, number> = {};
+        const infeedDistribution: Record<string, number> = {};
+        let totalPicking = 0;
+
+        logs.forEach(log => {
+            const picking = log.production_picking || 0;
+            totalPicking += picking;
+
+            dailyData.push({
+                date: log.date.split('-').reverse().slice(0, 2).join('/'),
+                picking: picking,
+                fullDate: log.date
+            });
+
+            if (log.production_box) {
+                boxDistribution[log.production_box] = (boxDistribution[log.production_box] || 0) + picking;
+            }
+
+            if (log.production_infeed) {
+                infeedDistribution[log.production_infeed] = (infeedDistribution[log.production_infeed] || 0) + picking;
+            }
+        });
+
+        const boxData = Object.entries(boxDistribution).map(([name, value]) => ({ name, value }));
+        const infeedData = Object.entries(infeedDistribution).map(([name, value]) => ({ name, value }));
+
+        return {
+            dailyData,
+            boxData,
+            infeedData,
+            totalPicking,
+            avgPicking: totalPicking / logs.length
+        };
+    }, [logs]);
 
     const setPresetPeriod = (type: 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth') => {
         const today = new Date();
@@ -485,8 +542,20 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                         <button onClick={() => setPresetPeriod('lastMonth')} className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-emerald-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Passado</button>
                     </div>
                 </div>
-
-                {/* Content Area */}
+                <div className="px-6 py-3 bg-slate-900 border-b border-white/5 flex items-center gap-1">
+                    <button 
+                        onClick={() => setActiveTab('ponto')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'ponto' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                    >
+                        <Clock size={14} /> Registro de Ponto
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('producao')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'producao' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                    >
+                        <Package size={14} /> Produção Diária
+                    </button>
+                </div>
                 <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-50">
@@ -498,7 +567,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                              <Users size={48} className="text-slate-700 mb-4" />
                              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{getTranslation('pt-PT', 'label_no_user_selected')}</p>
                         </div>
-                    ) : (
+                    ) : activeTab === 'ponto' ? (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             
                             {/* Stats Summary Bento Grid */}
@@ -799,6 +868,161 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    ) : (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                            {/* Production Stats Summary */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 p-6 rounded-lg border border-amber-500/10">
+                                    <div className="flex items-center gap-2 text-amber-400 mb-2">
+                                        <Package size={16} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Total Produzido</span>
+                                    </div>
+                                    <p className="text-3xl font-black text-white">{productionStats?.totalPicking.toLocaleString() || 0}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Peças no período</p>
+                                </div>
+                                <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/5 p-6 rounded-lg border border-blue-500/10">
+                                    <div className="flex items-center gap-2 text-blue-400 mb-2">
+                                        <TrendingUp size={16} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Média Diária</span>
+                                    </div>
+                                    <p className="text-3xl font-black text-white">{(productionStats?.avgPicking || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Peças / dia</p>
+                                </div>
+                                <div className="bg-gradient-to-br from-teal-500/20 to-teal-600/5 p-6 rounded-lg border border-teal-500/10">
+                                    <div className="flex items-center gap-2 text-teal-400 mb-2">
+                                        <Calendar size={16} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Dias Ativos</span>
+                                    </div>
+                                    <p className="text-3xl font-black text-white">{logs.filter(l => l.production_picking).length}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Com registro de produção</p>
+                                </div>
+                            </div>
+
+                            {/* Main Productivity Chart */}
+                            <div className="bg-slate-900 border border-white/5 rounded-lg p-6">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                    <BarChart3 size={14} className="text-amber-500" /> Produtividade Diária (Peças)
+                                </h3>
+                                <div className="h-[300px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={productionStats?.dailyData}>
+                                            <defs>
+                                                <linearGradient id="colorPicking" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" vertical={false} />
+                                            <XAxis 
+                                                dataKey="date" 
+                                                stroke="#475569" 
+                                                fontSize={10} 
+                                                tickLine={false} 
+                                                axisLine={false} 
+                                            />
+                                            <YAxis 
+                                                stroke="#475569" 
+                                                fontSize={10} 
+                                                tickLine={false} 
+                                                axisLine={false}
+                                                tickFormatter={(value) => value.toLocaleString()}
+                                            />
+                                            <Tooltip 
+                                                contentStyle={{ 
+                                                    backgroundColor: '#0f172a', 
+                                                    border: '1px solid #1e293b',
+                                                    borderRadius: '8px',
+                                                    fontSize: '11px',
+                                                    fontWeight: 'bold'
+                                                }}
+                                                itemStyle={{ color: '#fbbf24' }}
+                                                labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
+                                            />
+                                            <Area 
+                                                type="monotone" 
+                                                dataKey="picking" 
+                                                name="Produção"
+                                                stroke="#f59e0b" 
+                                                strokeWidth={3}
+                                                fillOpacity={1} 
+                                                fill="url(#colorPicking)" 
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Distribution Charts */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-slate-900 border border-white/5 rounded-lg p-6">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                        <PieChartIcon size={14} className="text-blue-500" /> Distribuição por Caixa (BOX)
+                                    </h3>
+                                    <div className="h-[250px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={productionStats?.boxData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={60}
+                                                    outerRadius={80}
+                                                    paddingAngle={5}
+                                                    dataKey="value"
+                                                >
+                                                    {(productionStats?.boxData || []).map((entry: any, index: number) => (
+                                                        <Cell key={`cell-${index}`} fill={[
+                                                            '#3b82f6', '#f97316', '#64748b', '#22c55e', '#eab308'
+                                                        ][index % 5]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip 
+                                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                                                />
+                                                <Legend 
+                                                    verticalAlign="bottom" 
+                                                    height={36}
+                                                    formatter={(value) => <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{value}</span>}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-900 border border-white/5 rounded-lg p-6">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                        <PieChartIcon size={14} className="text-purple-500" /> Distribuição por Infeed
+                                    </h3>
+                                    <div className="h-[250px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={productionStats?.infeedData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={60}
+                                                    outerRadius={80}
+                                                    paddingAngle={5}
+                                                    dataKey="value"
+                                                >
+                                                    {(productionStats?.infeedData || []).map((entry: any, index: number) => (
+                                                        <Cell key={`cell-${index}`} fill={index === 0 ? '#8b5cf6' : '#ec4899'} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip 
+                                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                                                />
+                                                <Legend 
+                                                    verticalAlign="bottom" 
+                                                    height={36}
+                                                    formatter={(value) => <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Infeed {value}</span>}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

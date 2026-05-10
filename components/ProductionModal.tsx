@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TimeLog, AppSettings } from '../types';
-import { X, Package, Hash, Archive, Save, Loader2 } from 'lucide-react';
+import { X, Package, Hash, Archive, Save, Loader2, TrendingUp } from 'lucide-react';
 import { getTranslation, TranslationKey } from '../services/translations';
 
 interface ProductionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (productionData: { date: string; box: string; infeed: string; picking: number }) => Promise<void>;
+  onOpenReports?: () => void;
   logs: TimeLog[];
   settings: AppSettings;
 }
 
 const DEFAULT_BOX_OPTIONS = ['Azul', 'Laranja', 'Cinzento', 'Verde', 'Amarelo'];
 
-const ProductionModal: React.FC<ProductionModalProps> = ({ isOpen, onClose, onSave, logs, settings }) => {
+const ProductionModal: React.FC<ProductionModalProps> = ({ isOpen, onClose, onSave, onOpenReports, logs, settings }) => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [box, setBox] = useState<string>('');
   const [infeed, setInfeed] = useState<string>('');
@@ -92,12 +93,23 @@ const ProductionModal: React.FC<ProductionModalProps> = ({ isOpen, onClose, onSa
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('label_today')}: {selectedDate.split('-').reverse().join('/')}</p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenReports && (
+              <button 
+                onClick={() => { onClose(); onOpenReports(); }}
+                className="p-2 hover:bg-emerald-500/10 rounded-lg transition-colors text-emerald-500"
+                title="Relatórios de Produção"
+              >
+                <TrendingUp size={20} />
+              </button>
+            )}
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="p-8 space-y-6">

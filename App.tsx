@@ -790,7 +790,14 @@ const App: React.FC = () => {
         onRefresh={loadUserData}
       />
       <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} settings={settings} />
-      <ProductionModal isOpen={isProductionModalOpen} onClose={() => setIsProductionModalOpen(false)} onSave={handleSaveProduction} logs={logs} settings={settings} />
+      <ProductionModal 
+        isOpen={isProductionModalOpen} 
+        onClose={() => setIsProductionModalOpen(false)} 
+        onSave={handleSaveProduction} 
+        logs={logs} 
+        settings={settings} 
+        onOpenReports={() => setIsReportsOpen(true)}
+      />
     </div>
   );
 };
