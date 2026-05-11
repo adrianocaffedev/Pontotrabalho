@@ -1,29 +1,11 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Calendar, Users, Clock, ArrowRight, Download, Filter, TrendingUp, DollarSign, Calculator, Briefcase, FileText, ChevronRight, ChevronLeft, Search, Loader2, CalendarOff, CalendarRange, Files, ShieldAlert, Utensils, Package, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { X, Calendar, Users, Clock, ArrowRight, Download, TrendingUp, DollarSign, Calculator, FileText, Loader2, CalendarOff, ShieldAlert, Utensils, Search } from 'lucide-react';
 import { AppSettings, AppUser, TimeLog, Absence } from '../types';
 import { supabase } from '../services/supabase';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getTranslation, TranslationKey } from '../services/translations';
 import { getHolidayByDate, getHolidayColorClasses } from '../services/holidayService';
-import { 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
-    Legend, 
-    ResponsiveContainer, 
-    PieChart, 
-    Pie, 
-    Cell,
-    LineChart,
-    Line,
-    AreaChart,
-    Area
-} from 'recharts';
 
 interface ReportsPortalProps {
     isOpen: boolean;
@@ -39,7 +21,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
     const [absences, setAbsences] = useState<any[]>([]);
     const [users, setUsers] = useState<AppUser[]>([]);
     const [settingsMap, setSettingsMap] = useState<Record<string, AppSettings>>({});
-    const [activeTab, setActiveTab] = useState<'ponto' | 'producao'>('ponto');
     
     // Filtros
     const [selectedUserId, setSelectedUserId] = useState<string>(currentUser?.id || '');
@@ -77,14 +58,11 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 company: u.company,
                 pin: u.pin,
                 active: u.active,
-                contractType: u.contract_type // Adicionado para identificar regime temporário
+                contractType: u.contract_type
             })));
         }
     };
 
-    /**
-     * Calcula dias úteis (Segunda a Sexta) em um determinado mês/ano
-     */
     const getBusinessDaysInMonth = (dateStr: string) => {
         const date = new Date(dateStr);
         const year = date.getFullYear();
@@ -105,7 +83,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         if (!selectedUserId) return;
         setLoading(true);
         try {
-            // Fetch logs for period
             const { data: logsData } = await supabase
                 .from('time_logs')
                 .select(`*, breaks (*)`)
@@ -114,7 +91,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 .lte('date', endDate)
                 .order('date', { ascending: true });
 
-            // Fetch absences for period
             const { data: absencesData } = await supabase
                 .from('absences')
                 .select('*')
@@ -122,7 +98,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                 .gte('date', startDate)
                 .lte('date', endDate);
 
-            // Fetch user specific settings
             const { data: settsData } = await supabase
                 .from('user_settings')
                 .select('*')
@@ -163,7 +138,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const user = users.find(u => u.id === selectedUserId);
         if (!userSettings && !user) return null;
 
-        // Rounding helper to ensure consistency
         const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
         let totalDurationMs = 0;
@@ -177,7 +151,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             const logDurationMs = Number(log.total_duration_ms) || 0;
             totalDurationMs += logDurationMs;
             
-            const logDate = new Date(log.date + 'T12:00:00'); // Force midday to avoid TZ issues
+            const logDate = new Date(log.date + 'T12:00:00');
             const dayOfWeek = logDate.getDay();
             const holidayInfo = getHolidayByDate(log.date);
             const isHoliday = [...(userSettings.holidays || []), ...systemHolidays].includes(log.date) || !!holidayInfo;
@@ -186,26 +160,20 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             const hours = logDurationMs / 3600000;
             const expectedMs = (userSettings.dailyWorkHours || 8) * 3600000;
 
-            // 1. Base Pay Calculation
             if (isHoliday || isOvertimeDay) {
-                // Days like Sundays or Holidays usually pay 100% extra in many PT contracts (effectively x2)
-                // Or follow a specific overtime rule. Here we treat them as fully extra or special.
                 const dayPay = hours * (userSettings.hourlyRate * 2);
                 totalBasePay += dayPay;
             } else {
                 totalBasePay += hours * userSettings.hourlyRate;
                 
-                // 2. Daily Overtime (Only on regular days, as special days are already x2)
                 if (logDurationMs > expectedMs) {
                     const extraMs = logDurationMs - expectedMs;
                     totalExtraMs += extraMs;
                     const extraHours = extraMs / 3600000;
-                    // Overtime pay is the EXTRA percentage on top of the already paid base
                     totalExtraPay += extraHours * (userSettings.hourlyRate * (userSettings.overtimePercentage / 100));
                 }
             }
             
-            // 3. Lunch Allowance
             if (logDurationMs > 0) {
                 lunchAllowanceTotalResult += (userSettings.foodAllowance || 0);
             }
@@ -222,7 +190,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const extraPay = round(totalExtraPay);
         
         if (isTemporary) {
-            // Regra de Duodécimos: 1/12 do salário base + extras por cada subsídio
             duodecimoFerias = round(basePay / 12);
             duodecimoNatal = round(basePay / 12);
         }
@@ -237,6 +204,9 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         const bruteTotal = round(baseTributavel); 
         const netTotal = round(baseTributavel - ssDiscount - irsDiscount); 
         const employerCost = round(baseTributavel * 1.2375 + lunchAllowanceTotal); 
+        
+        const averageDailyHours = daysWorkedCount > 0 ? totalHours / daysWorkedCount : 0;
+        const averageHourlyEarnings = totalHours > 0 ? netTotal / totalHours : 0;
 
         return {
             totalHours,
@@ -255,57 +225,11 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
             irsDiscount,
             lunchAllowanceTotal,
             employerCost,
-            isTemporary
+            isTemporary,
+            averageDailyHours,
+            averageHourlyEarnings
         };
     }, [logs, settingsMap, selectedUserId, users, startDate, systemHolidays]);
-
-    const productionStats = useMemo(() => {
-        if (logs.length === 0) return null;
-
-        const dailyData: any[] = [];
-        const boxDistribution: Record<string, number> = {};
-        const infeedDistribution: Record<string, number> = {};
-        let totalPicking = 0;
-        let totalWorkedMs = 0;
-
-        logs.forEach(log => {
-            const picking = log.production_picking || 0;
-            totalPicking += picking;
-            
-            // Only count time if there was production recorded that day
-            if (picking > 0) {
-                totalWorkedMs += (Number(log.total_duration_ms) || 0);
-            }
-
-            dailyData.push({
-                date: log.date.split('-').reverse().slice(0, 2).join('/'),
-                picking: picking,
-                fullDate: log.date
-            });
-
-            if (log.production_box) {
-                boxDistribution[log.production_box] = (boxDistribution[log.production_box] || 0) + picking;
-            }
-
-            if (log.production_infeed) {
-                infeedDistribution[log.production_infeed] = (infeedDistribution[log.production_infeed] || 0) + picking;
-            }
-        });
-
-        const boxData = Object.entries(boxDistribution).map(([name, value]) => ({ name, value }));
-        const infeedData = Object.entries(infeedDistribution).map(([name, value]) => ({ name, value }));
-        const totalHours = totalWorkedMs / 3600000;
-
-        return {
-            dailyData,
-            boxData,
-            infeedData,
-            totalPicking,
-            avgPicking: totalPicking / (logs.filter(l => l.production_picking > 0).length || 1),
-            totalHours,
-            pickingPerHour: totalHours > 0 ? totalPicking / totalHours : 0
-        };
-    }, [logs]);
 
     const setPresetPeriod = (type: 'today' | 'thisWeek' | 'thisMonth' | 'lastMonth') => {
         const today = new Date();
@@ -469,7 +393,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300">
             <div className="bg-[#0f172a] w-full h-full sm:h-[90vh] sm:max-w-5xl sm:rounded-xl shadow-2xl flex flex-col overflow-hidden border border-white/10">
                 
-                {/* Header */}
                 <div className="flex items-center justify-between px-6 py-6 border-b border-white/5 bg-slate-900/50">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-500/20">
@@ -485,7 +408,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                     </button>
                 </div>
 
-                {/* Filters Row */}
                 <div className="px-6 py-5 bg-slate-900/30 border-b border-white/5 space-y-4">
                     <div className="flex flex-wrap items-center gap-4">
                         {isAdmin && (
@@ -538,7 +460,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                 className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:grayscale"
                             >
                                 {loading ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
-                                {/* <span className="hidden lg:inline">Atualizar</span> */}
                             </button>
                         </div>
                     </div>
@@ -551,20 +472,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                         <button onClick={() => setPresetPeriod('lastMonth')} className="px-4 py-1.5 rounded-lg bg-white/5 hover:bg-emerald-500 text-[9px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all whitespace-nowrap">Mês Passado</button>
                     </div>
                 </div>
-                <div className="px-6 py-3 bg-slate-900 border-b border-white/5 flex items-center gap-1">
-                    <button 
-                        onClick={() => setActiveTab('ponto')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'ponto' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-                    >
-                        <Clock size={14} /> Registro de Ponto
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('producao')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'producao' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-                    >
-                        <Package size={14} /> Produção Diária
-                    </button>
-                </div>
+
                 <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-50">
@@ -576,11 +484,9 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                              <Users size={48} className="text-slate-700 mb-4" />
                              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{getTranslation('pt-PT', 'label_no_user_selected')}</p>
                         </div>
-                    ) : activeTab === 'ponto' ? (
+                    ) : (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            
-                            {/* Stats Summary Bento Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                                 <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 rounded-lg border border-emerald-500/10">
                                     <div className="flex items-center gap-2 text-emerald-400 mb-2">
                                         <Clock size={16} />
@@ -589,7 +495,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     <p className="text-3xl font-black text-white">{formatDuration(reportStats?.totalHours)}</p>
                                     <p className="text-[10px] text-slate-500 mt-1">{t('report_period')}</p>
                                 </div>
-
                                 <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 rounded-lg border border-emerald-500/10">
                                     <div className="flex items-center gap-2 text-emerald-400 mb-2">
                                         <TrendingUp size={16} />
@@ -598,7 +503,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     <p className="text-3xl font-black text-white">{currency} {(reportStats?.bruteTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
                                     <p className="text-[10px] text-slate-500 mt-1 font-medium italic">Salário + Extras + Duodécimos</p>
                                 </div>
-
                                 <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 p-6 rounded-lg border border-amber-500/10">
                                     <div className="flex items-center gap-2 text-amber-500 mb-2">
                                         <Utensils size={16} />
@@ -607,7 +511,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     <p className="text-3xl font-black text-white">{currency} {(reportStats?.lunchAllowanceTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
                                     <p className="text-[10px] text-slate-500 mt-1">Benefício Isento (Pago em Cartão)</p>
                                 </div>
-
                                 <div className="bg-gradient-to-br from-rose-500/20 to-rose-600/5 p-6 rounded-lg border border-rose-500/10">
                                     <div className="flex items-center gap-2 text-rose-400 mb-2">
                                         <Calculator size={16} />
@@ -616,23 +519,25 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     <p className="text-3xl font-black text-white">{currency} {((reportStats?.ssDiscount ?? 0) + (reportStats?.irsDiscount ?? 0)).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
                                     <p className="text-[10px] text-slate-500 mt-1">Seg. Social + IRS</p>
                                 </div>
-
-                                <div className="bg-emerald-600 p-6 rounded-lg border border-emerald-400/20 shadow-xl shadow-emerald-600/20">
-                                    <div className="flex items-center gap-2 text-emerald-100 mb-2">
-                                        <DollarSign size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">{t('label_net_value')}</span>
+                                <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/5 p-6 rounded-lg border border-blue-500/10">
+                                    <div className="flex items-center gap-2 text-blue-400 mb-2">
+                                        <Clock size={16} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Média Diária</span>
                                     </div>
-                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.netTotal ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
-                                    <p className="text-[10px] text-emerald-200 mt-1">Líquido a receber em conta</p>
+                                    <p className="text-3xl font-black text-white">{formatDuration(reportStats?.averageDailyHours)}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Horas por dia útil</p>
+                                </div>
+                                <div className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/5 p-6 rounded-lg border border-indigo-500/10">
+                                    <div className="flex items-center gap-2 text-indigo-400 mb-2">
+                                        <DollarSign size={16} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">Valor Real/Hora</span>
+                                    </div>
+                                    <p className="text-3xl font-black text-white">{currency} {(reportStats?.averageHourlyEarnings ?? 0).toLocaleString(lang === 'en' ? 'en-US' : 'pt-PT', {minimumFractionDigits: 2})}</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Líquido / Total Horas</p>
                                 </div>
                             </div>
 
-                        {/* Monthly Receipt Section */}
-                        <div className="bg-slate-900 border border-white/5 rounded-lg p-8 shadow-2xl overflow-hidden relative">
-                                <div className="absolute top-0 right-0 p-8 opacity-5">
-                                    <Files size={120} />
-                                </div>
-                                
+                            <div className="bg-slate-900 border border-white/5 rounded-lg p-8 shadow-2xl overflow-hidden relative">
                                 <div className="relative z-10">
                                     <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
                                         <div>
@@ -655,26 +560,22 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-                                        {/* Remunerações */}
                                         <div className="space-y-6">
                                             <div>
                                                 <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                                                     <TrendingUp size={12} /> 01. Rendimentos Brutos
                                                 </h4>
-                                                
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-center group">
                                                         <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Vencimento Base</span>
                                                         <span className="font-bold text-white tabular-nums">{currency} {reportStats?.basePay.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                     </div>
-                                                    
                                                     {reportStats && reportStats.extraPay > 0 && (
                                                         <div className="flex justify-between items-center group">
                                                             <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Horas Suplementares</span>
                                                             <span className="font-bold text-white tabular-nums">{currency} {reportStats.extraPay.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                         </div>
                                                     )}
-
                                                     {reportStats?.isTemporary && (
                                                         <>
                                                             <div className="flex justify-between items-center group">
@@ -687,7 +588,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                             </div>
                                                         </>
                                                     )}
-
                                                     <div className="flex justify-between items-center group pt-2 px-3 py-2 bg-slate-800/20 rounded-lg border border-white/5">
                                                         <div className="flex flex-col">
                                                             <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors flex items-center gap-2">
@@ -697,7 +597,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                         </div>
                                                         <span className="font-bold text-amber-500 tabular-nums">{currency} {reportStats?.lunchAllowanceTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                     </div>
-
                                                     <div className="pt-6 border-t border-white/5 flex justify-between items-center">
                                                         <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Total Bruto de Rendimentos</span>
                                                         <span className="text-xl font-black text-white tabular-nums">{currency} {reportStats?.bruteTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
@@ -706,13 +605,11 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                             </div>
                                         </div>
 
-                                        {/* Descontos e Líquido */}
                                         <div className="space-y-6">
                                             <div>
                                                 <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                                                     <ShieldAlert size={12} /> 02. Retenções e Encargos
                                                 </h4>
-                                                
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-center group">
                                                         <div className="flex flex-col">
@@ -721,7 +618,6 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                         </div>
                                                         <span className="font-bold text-rose-400 tabular-nums">(-) {currency} {reportStats?.ssDiscount.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                     </div>
-                                                    
                                                     <div className="flex justify-between items-center group">
                                                         <div className="flex flex-col">
                                                             <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Retenção na Fonte (IRS)</span>
@@ -729,12 +625,8 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                         </div>
                                                         <span className="font-bold text-rose-400 tabular-nums">(-) {currency} {reportStats?.irsDiscount.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
                                                     </div>
-
                                                     <div className="pt-8 border-t border-white/5">
                                                         <div className="bg-emerald-600/10 rounded-xl p-6 border border-emerald-500/20 relative overflow-hidden group">
-                                                            <div className="absolute top-0 right-0 -mr-4 -mt-4 opacity-10 group-hover:scale-110 transition-transform">
-                                                                <DollarSign size={80} />
-                                                            </div>
                                                             <div className="relative z-10">
                                                                 <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-1 block">Valor Líquido Final</span>
                                                                 <div className="flex items-baseline gap-2">
@@ -742,22 +634,9 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                                         {currency} {reportStats?.netTotal.toLocaleString('pt-PT', {minimumFractionDigits: 2})}
                                                                     </span>
                                                                 </div>
-                                                                <p className="text-[9px] text-emerald-300/40 font-bold uppercase tracking-widest mt-2">Valor disponível para transferência</p>
                                                             </div>
                                                         </div>
                                                     </div>
-
-                                                    {isAdmin && (
-                                                        <div className="mt-6 pt-6 border-t border-white/5 opacity-40 hover:opacity-100 transition-opacity">
-                                                            <div className="flex justify-between items-center px-4 py-3 bg-slate-800/30 rounded-xl border border-white/5">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Briefcase size={14} className="text-slate-500" />
-                                                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Custo para Empresa</span>
-                                                                </div>
-                                                                <span className="text-xs font-black text-slate-400">{currency} {reportStats?.employerCost.toLocaleString('pt-PT', {minimumFractionDigits: 2})}</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -765,17 +644,12 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                 </div>
                             </div>
 
-                            {/* Details Table */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <FileText size={14} className="text-slate-500" /> Detalhamento Diário
                                     </h3>
-                                    <div className="flex items-center gap-2">
-                                        <span className="px-3 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 border border-slate-700">{logs.length} Dias Registrados</span>
-                                    </div>
                                 </div>
-
                                 <div className="bg-slate-900 shadow-2xl rounded-lg border border-white/5 overflow-hidden">
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left border-collapse">
@@ -798,7 +672,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                                     
                                                     return (
                                                         <tr key={log.id} className={`hover:bg-white/[0.02] transition-colors group ${isHoliday ? holidayColors.bg : ''}`}>
-                                                                    <td className="px-6 py-4">
+                                                            <td className="px-6 py-4">
                                                                 <div className="flex flex-col">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-sm font-bold text-white">{log.date.split('-').reverse().slice(0, 2).join('/')}</span>
@@ -853,8 +727,7 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                 </div>
                             </div>
 
-                             {/* Absences Section */}
-                             {absences.length > 0 && (
+                            {absences.length > 0 && (
                                 <div className="space-y-4">
                                     <h3 className="text-xs font-bold text-rose-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <CalendarOff size={14} className="text-rose-500" /> Justificativas e Ocorrências
@@ -878,173 +751,9 @@ const ReportsPortal: React.FC<ReportsPortalProps> = ({ isOpen, onClose, currentU
                                 </div>
                             )}
                         </div>
-                    ) : (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                            {/* Production Stats Summary */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="bg-gradient-to-br from-amber-500/20 to-amber-600/5 p-6 rounded-lg border border-amber-500/10">
-                                    <div className="flex items-center gap-2 text-amber-400 mb-2">
-                                        <Package size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Total Produzido</span>
-                                    </div>
-                                    <p className="text-3xl font-black text-white">{productionStats?.totalPicking.toLocaleString() || 0}</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Peças no período</p>
-                                </div>
-                                <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 p-6 rounded-lg border border-emerald-500/10 shadow-lg shadow-emerald-500/10">
-                                    <div className="flex items-center gap-2 text-emerald-400 mb-2">
-                                        <Clock size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Peças por Hora</span>
-                                    </div>
-                                    <p className="text-3xl font-black text-white">{(productionStats?.pickingPerHour || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Média de velocidade</p>
-                                </div>
-                                <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/5 p-6 rounded-lg border border-blue-500/10">
-                                    <div className="flex items-center gap-2 text-blue-400 mb-2">
-                                        <TrendingUp size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Média Diária</span>
-                                    </div>
-                                    <p className="text-3xl font-black text-white">{(productionStats?.avgPicking || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Peças / dia</p>
-                                </div>
-                                <div className="bg-gradient-to-br from-teal-500/20 to-teal-600/5 p-6 rounded-lg border border-teal-500/10">
-                                    <div className="flex items-center gap-2 text-teal-400 mb-2">
-                                        <Calendar size={16} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">Dias Ativos</span>
-                                    </div>
-                                    <p className="text-3xl font-black text-white">{logs.filter(l => l.production_picking).length}</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Com registro de produção</p>
-                                </div>
-                            </div>
-
-                            {/* Main Productivity Chart */}
-                            <div className="bg-slate-900 border border-white/5 rounded-lg p-6">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                    <BarChart3 size={14} className="text-amber-500" /> Produtividade Diária (Peças)
-                                </h3>
-                                <div className="h-[300px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={productionStats?.dailyData}>
-                                            <defs>
-                                                <linearGradient id="colorPicking" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0a" vertical={false} />
-                                            <XAxis 
-                                                dataKey="date" 
-                                                stroke="#475569" 
-                                                fontSize={10} 
-                                                tickLine={false} 
-                                                axisLine={false} 
-                                            />
-                                            <YAxis 
-                                                stroke="#475569" 
-                                                fontSize={10} 
-                                                tickLine={false} 
-                                                axisLine={false}
-                                                tickFormatter={(value) => value.toLocaleString()}
-                                            />
-                                            <Tooltip 
-                                                contentStyle={{ 
-                                                    backgroundColor: '#0f172a', 
-                                                    border: '1px solid #1e293b',
-                                                    borderRadius: '8px',
-                                                    fontSize: '11px',
-                                                    fontWeight: 'bold'
-                                                }}
-                                                itemStyle={{ color: '#fbbf24' }}
-                                                labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
-                                            />
-                                            <Area 
-                                                type="monotone" 
-                                                dataKey="picking" 
-                                                name="Produção"
-                                                stroke="#f59e0b" 
-                                                strokeWidth={3}
-                                                fillOpacity={1} 
-                                                fill="url(#colorPicking)" 
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            {/* Distribution Charts */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-slate-900 border border-white/5 rounded-lg p-6">
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                        <PieChartIcon size={14} className="text-blue-500" /> Distribuição por Caixa (BOX)
-                                    </h3>
-                                    <div className="h-[250px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={productionStats?.boxData}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={60}
-                                                    outerRadius={80}
-                                                    paddingAngle={5}
-                                                    dataKey="value"
-                                                >
-                                                    {(productionStats?.boxData || []).map((entry: any, index: number) => (
-                                                        <Cell key={`cell-${index}`} fill={[
-                                                            '#3b82f6', '#f97316', '#64748b', '#22c55e', '#eab308'
-                                                        ][index % 5]} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip 
-                                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
-                                                />
-                                                <Legend 
-                                                    verticalAlign="bottom" 
-                                                    height={36}
-                                                    formatter={(value) => <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{value}</span>}
-                                                />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-900 border border-white/5 rounded-lg p-6">
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                        <PieChartIcon size={14} className="text-purple-500" /> Distribuição por Infeed
-                                    </h3>
-                                    <div className="h-[250px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={productionStats?.infeedData}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={60}
-                                                    outerRadius={80}
-                                                    paddingAngle={5}
-                                                    dataKey="value"
-                                                >
-                                                    {(productionStats?.infeedData || []).map((entry: any, index: number) => (
-                                                        <Cell key={`cell-${index}`} fill={index === 0 ? '#8b5cf6' : '#ec4899'} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip 
-                                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
-                                                />
-                                                <Legend 
-                                                    verticalAlign="bottom" 
-                                                    height={36}
-                                                    formatter={(value) => <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Infeed {value}</span>}
-                                                />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     )}
                 </div>
 
-                {/* Footer Actions */}
                 <div className="px-6 py-6 bg-slate-900 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 italic max-w-xs">
                         <Calculator size={14} className="text-emerald-400 shrink-0" /> Valores baseados nas taxas atuais de SS ({settingsMap[selectedUserId]?.socialSecurityRate || 11}%) e IRS ({settingsMap[selectedUserId]?.irsRate || 0}%)

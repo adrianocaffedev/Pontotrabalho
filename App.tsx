@@ -9,9 +9,8 @@ import SettingsModal from './components/SettingsModal';
 import ReportsPortal from './components/ReportsPortal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
-import ProductionModal from './components/ProductionModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp, Package, ShieldAlert } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp, ShieldAlert } from 'lucide-react';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
@@ -101,7 +100,6 @@ const App: React.FC = () => {
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [isAbsenceModalOpen, setIsAbsenceModalOpen] = useState(false);
   const [isManualLogModalOpen, setIsManualLogModalOpen] = useState(false);
-  const [isProductionModalOpen, setIsProductionModalOpen] = useState(false);
   const [standaloneAbsences, setStandaloneAbsences] = useState<Absence[]>([]);
   const [editingLog, setEditingLog] = useState<TimeLog | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -196,6 +194,12 @@ const App: React.FC = () => {
     };
     initApp();
   }, []);
+
+  useEffect(() => {
+    if (settings.enableNotifications && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+  }, [settings.enableNotifications]);
 
   const loadUserData = useCallback(async () => {
       if (!activeUser) return;
@@ -343,6 +347,9 @@ const App: React.FC = () => {
 
                     // Notificação de Limite Excedido (Real-time visual alert)
                     if (timeElapsedMs > limitMs) {
+                        if (!isBreakLimitExceeded) {
+                             sendSmartNotification('label_limit_exceeded', 'notif_lunch_end_body');
+                        }
                         setIsBreakLimitExceeded(true);
                         setExceededTime(Math.floor((timeElapsedMs - limitMs) / 60000));
                         
@@ -549,29 +556,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSaveProduction = async (data: { date: string; box: string; infeed: string; picking: number }) => {
-    if (!activeUser) return;
-    
-    const existingLog = logs.find(l => l.date === data.date);
-    if (!existingLog) {
-      alert("Não foi encontrado um registro de ponto para esta data. Inicie a jornada primeiro.");
-      return;
-    }
-
-    const updatedLog = {
-      ...existingLog,
-      productionBox: data.box,
-      productionInfeed: data.infeed,
-      productionPicking: data.picking
-    };
-
-    setLogs(prev => prev.map(l => l.id === updatedLog.id ? updatedLog : l));
-    const result = await upsertRemoteLog(updatedLog, activeUser.id);
-    if (!result.success) {
-      alert("Erro ao salvar produção: " + result.error);
-    }
-  };
-
   const todayLog = logs.find(l => l.date === getLocalDateString(now));
   const workedMs = todayLog ? (() => {
       let total = (todayLog.endTime ? new Date(todayLog.endTime).getTime() : now.getTime()) - new Date(todayLog.startTime).getTime();
@@ -724,7 +708,6 @@ const App: React.FC = () => {
              <button onClick={handleLogout} className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-b-2 border-rose-200 dark:border-rose-900/50 active:border-b-0 active:translate-y-[2px] text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
                 <LogOut size={16} /> <span className="hidden sm:inline">Sair</span>
              </button>
-             <button onClick={() => setIsProductionModalOpen(true)} className="p-2 sm:p-3 rounded-lg bg-amber-500 text-white shadow-[0_4px_0_0_#92400e] active:shadow-none active:translate-y-[4px] transition-all" title={t('label_production')}><Package size={18}/></button>
              <button onClick={() => setIsReportsOpen(true)} className="p-2 sm:p-3 rounded-lg bg-emerald-500 text-white shadow-[0_4px_0_0_#065f46] active:shadow-none active:translate-y-[4px] transition-all" title="Relatórios"><TrendingUp size={18}/></button>
              <button onClick={() => setIsSettingsOpen(true)} className="p-2 sm:p-3 rounded-lg bg-slate-800 text-white dark:bg-white dark:text-slate-900 active:shadow-none active:translate-y-[4px] shadow-[0_4px_0_0_#0f172a] dark:shadow-[0_4px_0_0_#cbd5e1] transition-all" title="Configurações"><SettingsIcon size={18}/></button>
           </div>
@@ -837,14 +820,6 @@ const App: React.FC = () => {
         onRefresh={loadUserData}
       />
       <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} settings={settings} />
-      <ProductionModal 
-        isOpen={isProductionModalOpen} 
-        onClose={() => setIsProductionModalOpen(false)} 
-        onSave={handleSaveProduction} 
-        logs={logs} 
-        settings={settings} 
-        onOpenReports={() => setIsReportsOpen(true)}
-      />
     </div>
   );
 };

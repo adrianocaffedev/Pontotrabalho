@@ -1,6 +1,6 @@
 import React from 'react';
 import { WorkStatus } from '../types';
-import { Moon, Zap, Utensils, Coffee, CheckCircle2, LucideIcon } from 'lucide-react';
+import { Circle, Play, Utensils, Coffee, Check, LucideIcon } from 'lucide-react';
 
 interface StatusBadgeProps {
   status: WorkStatus;
@@ -11,15 +11,15 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {
   const config: Record<WorkStatus, { style: string; label: string; icon: LucideIcon; iconColor: string }> = {
     [WorkStatus.IDLE]: {
       style: 'bg-slate-100/80 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-      label: label || 'Inativo',
-      icon: Moon,
-      iconColor: 'text-slate-400 dark:text-slate-500'
+      label: label || 'Disponível',
+      icon: Circle,
+      iconColor: 'text-slate-400 dark:text-slate-500 fill-current opacity-20'
     },
     [WorkStatus.WORKING]: {
       style: 'bg-emerald-50/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/50',
       label: label || 'Trabalhando',
-      icon: Zap,
-      iconColor: 'text-emerald-500 animate-pulse'
+      icon: Play,
+      iconColor: 'text-emerald-500 animate-pulse fill-current'
     },
     [WorkStatus.ON_LUNCH]: {
       style: 'bg-amber-50/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-800/50',
@@ -36,8 +36,8 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status, label }) => {
     [WorkStatus.FINISHED]: {
       style: 'bg-slate-800 dark:bg-slate-700 text-white border-slate-800 dark:border-slate-700',
       label: label || 'Encerrado',
-      icon: CheckCircle2,
-      iconColor: 'text-slate-400'
+      icon: Check,
+      iconColor: 'text-emerald-400'
     }
   };
 

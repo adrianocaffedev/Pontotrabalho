@@ -81,11 +81,6 @@ const isOnline = () => {
  * ALTER TABLE absences ADD COLUMN IF NOT EXISTS date TEXT;
  * ALTER TABLE absences ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES app_users(id) ON DELETE CASCADE;
  * ALTER TABLE absences ALTER COLUMN time_log_id DROP NOT NULL;
- * 
- * -- Novas colunas para produção
- * ALTER TABLE time_logs ADD COLUMN IF NOT EXISTS production_box TEXT;
- * ALTER TABLE time_logs ADD COLUMN IF NOT EXISTS production_infeed TEXT;
- * ALTER TABLE time_logs ADD COLUMN IF NOT EXISTS production_picking NUMERIC DEFAULT 0;
  */
 
 const mapSettingsFromDb = (dbSettings: any): AppSettings | null => {
@@ -119,9 +114,6 @@ const mapLogFromDb = (dbLog: any, dbBreaks: any[], dbAbsences: any[]): TimeLog =
     startTime: dbLog.start_time,
     endTime: dbLog.end_time || undefined,
     totalDurationMs: Number(dbLog.total_duration_ms),
-    productionBox: dbLog.production_box || '',
-    productionInfeed: dbLog.production_infeed || '',
-    productionPicking: dbLog.production_picking || 0,
     breaks: dbBreaks.map(b => ({
       id: b.id,
       startTime: b.start_time,
@@ -466,10 +458,7 @@ export const upsertRemoteLog = async (log: TimeLog, userId: string): Promise<{ s
         date: log.date,
         start_time: log.startTime,
         end_time: log.endTime || null,
-        total_duration_ms: log.totalDurationMs,
-        production_box: log.productionBox || '',
-        production_infeed: log.productionInfeed || '',
-        production_picking: log.productionPicking || 0
+        total_duration_ms: log.totalDurationMs
       });
 
       if (!error) {
