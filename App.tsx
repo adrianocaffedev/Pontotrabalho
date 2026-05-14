@@ -612,7 +612,7 @@ const App: React.FC = () => {
                     <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/30 ring-4 ring-white/10">
                         <ClockIcon size={40} className="text-white" />
                     </div>
-                    <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight mb-2">Ponto<span className="text-emerald-500">Inteligente</span></h1>
+                    <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight mb-2">Ponto Inteligente <span className="text-emerald-500 font-medium">v1.2</span></h1>
                     <p className="text-slate-500 dark:text-slate-400 font-medium">Controle de jornada seguro</p>
                 </div>
 
@@ -718,7 +718,7 @@ const App: React.FC = () => {
                 <ClockIcon size={24} className="text-emerald-600 dark:text-emerald-400" />
              </div>
              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Ponto<span className="text-emerald-500">Inteligente</span></h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">Ponto Inteligente <span className="text-emerald-500 font-medium">v1.2</span></h1>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{activeUser?.company || 'Sistema de Ponto'}</p>
              </div>
           </div>

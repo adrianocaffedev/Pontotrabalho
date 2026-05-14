@@ -30,7 +30,7 @@ export const registerBiometrics = async (user: AppUser): Promise<{ success: bool
         const options: any = {
             challenge,
             rp: {
-                name: 'PontoInteligente AI',
+                name: 'Ponto Inteligente v1.2',
                 id: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
             },
             user: {

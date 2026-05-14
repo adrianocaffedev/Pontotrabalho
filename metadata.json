@@ -1,5 +1,5 @@
 {
-  "name": "PontoInteligente",
+  "name": "Ponto Inteligente v1.2",
   "description": "Sistema de controle de ponto inteligente. Registre entrada, almoço e saída, acompanhe sua jornada em tempo real e gere relatórios detalhados.",
   "requestFramePermissions": ["publickey-credentials-create", "publickey-credentials-get"],
   "majorCapabilities": []
