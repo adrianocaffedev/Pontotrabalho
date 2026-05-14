@@ -72,6 +72,29 @@ html.dark .blob-3 { background: #831843; }
   animation: bounce-subtle 2s infinite ease-in-out;
 }
 
+@keyframes scan-line {
+  0% { transform: translateY(-100%); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+.animate-scan-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-scan-line::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #34d399, transparent);
+  animation: scan-line 2s linear infinite;
+  box-shadow: 0 0 8px #10b981;
+}
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }

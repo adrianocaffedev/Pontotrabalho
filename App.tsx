@@ -782,9 +782,23 @@ const App: React.FC = () => {
                     <div className="mt-8 flex items-center gap-6">
                         {status === WorkStatus.IDLE || status === WorkStatus.FINISHED ? (
                             <div className="flex flex-col items-center gap-6">
-                                <button onClick={handleStartWork} className="w-20 h-20 rounded-full bg-emerald-600 text-white shadow-[0_6px_0_0_#065f46] shadow-emerald-900/50 flex items-center justify-center hover:bg-emerald-500 active:shadow-none active:translate-y-[6px] transition-all relative group">
-                                    <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                                    {activeUser?.biometricCredential ? <Fingerprint size={32} /> : <Play size={28} className="ml-1 fill-current" />}
+                                <button 
+                                    onClick={handleStartWork} 
+                                    className={`w-24 h-24 rounded-full flex items-center justify-center transition-all relative group overflow-hidden ${
+                                        activeUser?.biometricCredential 
+                                        ? 'bg-slate-900 border-4 border-emerald-500/30 text-emerald-400 shadow-[inset_0_2px_10px_rgba(0,0,0,0.6)] animate-scan-line' 
+                                        : 'bg-emerald-600 text-white shadow-[0_6px_0_0_#065f46] shadow-emerald-900/50 hover:bg-emerald-500 active:shadow-none active:translate-y-[6px]'
+                                    }`}
+                                >
+                                    {!activeUser?.biometricCredential && <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>}
+                                    {activeUser?.biometricCredential ? (
+                                        <div className="flex flex-col items-center gap-1">
+                                            <Fingerprint size={42} strokeWidth={1.5} className="drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                            <span className="text-[8px] font-black uppercase tracking-tighter opacity-60">Biometria</span>
+                                        </div>
+                                    ) : (
+                                        <Play size={32} className="ml-1 fill-current" />
+                                    )}
                                 </button>
                                 <button 
                                     onClick={() => setIsAbsenceModalOpen(true)} 
@@ -797,12 +811,42 @@ const App: React.FC = () => {
                             <div className="flex gap-6 items-center">
                                 {status === WorkStatus.WORKING && (
                                     <>
-                                        <button onClick={() => handleStartBreak('LUNCH')} className="w-16 h-16 rounded-lg bg-amber-100 text-amber-600 border-b-4 border-amber-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-amber-50 transition-all" title={t('btn_lunch')}><Utensils size={24}/></button>
-                                        <button onClick={() => handleStartBreak('COFFEE')} className="w-16 h-16 rounded-lg bg-teal-100 text-teal-600 border-b-4 border-teal-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-teal-50 transition-all" title={t('btn_coffee')}><Coffee size={24}/></button>
+                                        <button 
+                                            onClick={() => handleStartBreak('LUNCH')} 
+                                            className={`w-16 h-16 rounded-xl flex items-center justify-center transition-all ${
+                                                activeUser?.biometricCredential 
+                                                ? 'bg-slate-900 border-2 border-amber-500/30 text-amber-400 animate-scan-line' 
+                                                : 'bg-amber-100 text-amber-600 border-b-4 border-amber-200 active:border-b-0 active:translate-y-[4px] hover:bg-amber-50'
+                                            }`} 
+                                            title={t('btn_lunch')}
+                                        >
+                                            {activeUser?.biometricCredential ? <Fingerprint size={28} /> : <Utensils size={24}/>}
+                                        </button>
+                                        <button 
+                                            onClick={() => handleStartBreak('COFFEE')} 
+                                            className={`w-16 h-16 rounded-xl flex items-center justify-center transition-all ${
+                                                activeUser?.biometricCredential 
+                                                ? 'bg-slate-900 border-2 border-teal-500/30 text-teal-400 animate-scan-line' 
+                                                : 'bg-teal-100 text-teal-600 border-b-4 border-teal-200 active:border-b-0 active:translate-y-[4px] hover:bg-teal-50'
+                                            }`} 
+                                            title={t('btn_coffee')}
+                                        >
+                                            {activeUser?.biometricCredential ? <Fingerprint size={28} /> : <Coffee size={24}/>}
+                                        </button>
                                     </>
                                 )}
                                 {(status === WorkStatus.ON_LUNCH || status === WorkStatus.ON_COFFEE) && (
-                                    <button onClick={handleEndBreak} className="w-20 h-20 rounded-full bg-emerald-500 text-white shadow-[0_6px_0_0_#064e3b] active:shadow-none active:translate-y-[6px] flex items-center justify-center hover:bg-emerald-400 transition-all" title={t('btn_return')}>{activeUser?.biometricCredential ? <Fingerprint size={32} /> : <PlayCircle size={28}/>}</button>
+                                    <button 
+                                        onClick={handleEndBreak} 
+                                        className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
+                                            activeUser?.biometricCredential 
+                                            ? 'bg-slate-900 border-4 border-emerald-500/30 text-emerald-400 animate-scan-line' 
+                                            : 'bg-emerald-500 text-white shadow-[0_6px_0_0_#064e3b] active:shadow-none active:translate-y-[6px] hover:bg-emerald-400'
+                                        }`} 
+                                        title={t('btn_return')}
+                                    >
+                                        {activeUser?.biometricCredential ? <Fingerprint size={36} /> : <PlayCircle size={28}/>}
+                                    </button>
                                 )}
                                 <button onClick={handleEndWork} className="w-16 h-16 rounded-lg bg-rose-100 text-rose-600 border-b-4 border-rose-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-rose-50 transition-all" title={t('btn_stop')}><StopCircle size={24}/></button>
                             </div>
