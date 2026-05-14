@@ -196,7 +196,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (settings.enableNotifications && Notification.permission === 'default') {
+    if (typeof window !== 'undefined' && 'Notification' in window && settings.enableNotifications && Notification.permission === 'default') {
         Notification.requestPermission();
     }
   }, [settings.enableNotifications]);
@@ -269,15 +269,19 @@ const App: React.FC = () => {
 
   const sendSmartNotification = (titleKey: TranslationKey, bodyKey: TranslationKey) => {
     const timeKey = `${now.getHours()}:${now.getMinutes()}`;
-    if (lastReminderTimeRef.current === timeKey) return; // Evitar disparar várias vezes no mesmo minuto
+    if (lastReminderTimeRef.current === timeKey) return; 
     
     lastReminderTimeRef.current = timeKey;
     
-    if (Notification.permission === 'granted') {
-        new Notification(t(titleKey), {
-            body: t(bodyKey),
-            icon: '/favicon.ico'
-        });
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+            new Notification(t(titleKey), {
+                body: t(bodyKey),
+                icon: '/favicon.ico'
+            });
+        } catch (e) {
+            console.error("Erro ao enviar notificação nativa:", e);
+        }
     }
     
     playNotificationSound();
