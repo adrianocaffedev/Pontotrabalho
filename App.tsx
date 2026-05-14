@@ -467,8 +467,11 @@ const App: React.FC = () => {
 
   const handleStartWork = () => {
     const todayStr = getLocalDateString(new Date());
-    if (logs.some(l => l.date === todayStr)) {
-        alert("Já existe um registro para hoje.");
+    const dailyLimitMs = (settings.dailyWorkHours || 8) * 60 * 60 * 1000;
+    const totalTodayMs = logs.filter(l => l.date === todayStr).reduce((sum, l) => sum + (l.totalDurationMs || 0), 0);
+
+    if (totalTodayMs >= dailyLimitMs) {
+        alert(`Já existe um registro completo (jornada de ${settings.dailyWorkHours}h) para hoje.`);
         return;
     }
     const newLog: TimeLog = { id: generateId(), date: todayStr, startTime: new Date().toISOString(), breaks: [], absences: [], totalDurationMs: 0 };
@@ -819,7 +822,7 @@ const App: React.FC = () => {
         existingAbsences={standaloneAbsences}
         onRefresh={loadUserData}
       />
-      <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingDates={logs.map(l => l.date)} settings={settings} />
+      <ManualLogModal isOpen={isManualLogModalOpen} onClose={() => { setIsManualLogModalOpen(false); setEditingLog(null); }} onSave={handleSaveManualLog} initialLog={editingLog} existingLogs={logs} settings={settings} />
     </div>
   );
 };
