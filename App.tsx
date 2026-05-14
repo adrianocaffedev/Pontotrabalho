@@ -10,7 +10,7 @@ import ReportsPortal from './components/ReportsPortal';
 import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
-import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp, ShieldAlert } from 'lucide-react';
+import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp, ShieldAlert, Fingerprint } from 'lucide-react';
 import { verifyBiometrics } from './services/biometricService';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
@@ -784,7 +784,7 @@ const App: React.FC = () => {
                             <div className="flex flex-col items-center gap-6">
                                 <button onClick={handleStartWork} className="w-20 h-20 rounded-full bg-emerald-600 text-white shadow-[0_6px_0_0_#065f46] shadow-emerald-900/50 flex items-center justify-center hover:bg-emerald-500 active:shadow-none active:translate-y-[6px] transition-all relative group">
                                     <div className="absolute inset-0 bg-white/20 rounded-full animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                                    <Play size={28} className="ml-1 fill-current" />
+                                    {activeUser?.biometricCredential ? <Fingerprint size={32} /> : <Play size={28} className="ml-1 fill-current" />}
                                 </button>
                                 <button 
                                     onClick={() => setIsAbsenceModalOpen(true)} 
@@ -802,7 +802,7 @@ const App: React.FC = () => {
                                     </>
                                 )}
                                 {(status === WorkStatus.ON_LUNCH || status === WorkStatus.ON_COFFEE) && (
-                                    <button onClick={handleEndBreak} className="w-20 h-20 rounded-full bg-emerald-500 text-white shadow-[0_6px_0_0_#064e3b] active:shadow-none active:translate-y-[6px] flex items-center justify-center hover:bg-emerald-400 transition-all" title={t('btn_return')}><PlayCircle size={28}/></button>
+                                    <button onClick={handleEndBreak} className="w-20 h-20 rounded-full bg-emerald-500 text-white shadow-[0_6px_0_0_#064e3b] active:shadow-none active:translate-y-[6px] flex items-center justify-center hover:bg-emerald-400 transition-all" title={t('btn_return')}>{activeUser?.biometricCredential ? <Fingerprint size={32} /> : <PlayCircle size={28}/>}</button>
                                 )}
                                 <button onClick={handleEndWork} className="w-16 h-16 rounded-lg bg-rose-100 text-rose-600 border-b-4 border-rose-200 active:border-b-0 active:translate-y-[4px] shadow-sm flex items-center justify-center hover:bg-rose-50 transition-all" title={t('btn_stop')}><StopCircle size={24}/></button>
                             </div>
