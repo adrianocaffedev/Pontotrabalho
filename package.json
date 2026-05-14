@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.3.0",
     "@supabase/supabase-js": "^2.105.1",
     "dexie": "^4.4.2",
     "jspdf": "^2.5.1",

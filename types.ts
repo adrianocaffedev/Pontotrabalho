@@ -81,5 +81,11 @@ export interface AppUser {
   renewals?: ContractRenewal[];
   pin?: string; // Novo campo para segurança da sessão
   isAdmin?: boolean; // Novo campo para identificar super usuários
+  biometricCredential?: {
+    id: string;
+    publicKey: string | any;
+    counter: number;
+    transports?: any[];
+  };
   created_at?: string;
 }

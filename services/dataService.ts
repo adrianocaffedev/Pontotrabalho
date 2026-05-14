@@ -63,6 +63,7 @@ const isOnline = () => {
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS renewals JSONB DEFAULT '[]'::JSONB;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS pin TEXT;
  * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
+ * ALTER TABLE app_users ADD COLUMN IF NOT EXISTS biometric_credential JSONB DEFAULT NULL;
  * 
  * -- Novas colunas para configurações de tempo e taxas
  * ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS daily_work_hours NUMERIC DEFAULT 8;
@@ -144,6 +145,7 @@ const mapUserFromDb = (dbUser: any): AppUser => {
     renewals: Array.isArray(dbUser.renewals) ? dbUser.renewals : [],
     pin: dbUser.pin || '', // Adicionado mapeamento do PIN
     isAdmin: !!dbUser.is_admin, // Adicionado mapeamento do Administrador
+    biometricCredential: dbUser.biometric_credential || null,
     created_at: dbUser.created_at
   };
 };
@@ -179,6 +181,7 @@ export const createAppUser = async (userData: Partial<AppUser>): Promise<{ user:
         renewals: userData.renewals || [],
         pin: userData.pin || '', // Adicionado campo PIN na criação
         is_admin: userData.isAdmin || false, // Suporte para novo campo admin
+        biometric_credential: userData.biometricCredential || null,
         active: true
       })
       .select()
@@ -229,6 +232,7 @@ export const updateAppUser = async (id: string, userData: Partial<AppUser>): Pro
     if (userData.contractStartDate !== undefined) payload.contract_start_date = String(userData.contractStartDate);
     if (userData.pin !== undefined) payload.pin = String(userData.pin); // Adicionado campo PIN na atualização
     if (userData.isAdmin !== undefined) payload.is_admin = !!userData.isAdmin;
+    if (userData.biometricCredential !== undefined) payload.biometric_credential = userData.biometricCredential;
     
     if (userData.renewals !== undefined) {
       payload.renewals = JSON.parse(JSON.stringify(userData.renewals));

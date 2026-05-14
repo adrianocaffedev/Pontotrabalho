@@ -4,6 +4,7 @@ import { X, Save, Clock, BellRing, Briefcase, Coins, Utensils, Percent, Calendar
 import { AppSettings, AppUser, ContractRenewal, UserDocument } from '../types';
 import { getAppUsers, createAppUser, deleteAppUser, verifyAdminPassword, updateAppUser, fetchAllJustifications, uploadUserDocument, getUserDocuments, deleteUserDocument, getDocumentPublicUrl } from '../services/dataService';
 import { getTranslation, TranslationKey } from '../services/translations';
+import { registerBiometrics, isBiometricsSupported } from '../services/biometricService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -59,6 +60,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [docCategory, setDocCategory] = useState<UserDocument['category']>('OTHER');
+
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [isRegisteringBiometrics, setIsRegisteringBiometrics] = useState(false);
+
+  useEffect(() => {
+    isBiometricsSupported().then(setBiometricsAvailable);
+  }, []);
+
+  const handleRegisterBiometrics = async () => {
+    if (!currentUser) return;
+    setIsRegisteringBiometrics(true);
+    const { success, error } = await registerBiometrics(currentUser);
+    setIsRegisteringBiometrics(false);
+    if (success) {
+        alert("Biometria registrada com sucesso!");
+    } else {
+        alert("Erro ao registrar biometria: " + error);
+    }
+  };
 
   const fetchUserDocs = async (userId: string) => {
     setLoadingDocs(true);
@@ -436,6 +456,36 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed italic">Este tempo define o aviso prévio para o fim da jornada e para o retorno do intervalo de almoço.</p>
                     </div>
                 </div>
+
+                {/* Biometria (Passkeys) */}
+                {biometricsAvailable && currentUser && (
+                    <div className="space-y-4 p-5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-white/5">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <ShieldCheck size={12} className="text-emerald-500 dark:text-emerald-400"/> Segurança Biométrica
+                        </h4>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-bold text-slate-800 dark:text-white">Autenticação por Digital</p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight pr-4">Habilite o reconhecimento facial ou digital para validar suas batidas de ponto.</p>
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={handleRegisterBiometrics}
+                                disabled={isRegisteringBiometrics}
+                                className={`px-4 py-2 rounded-lg font-bold text-[10px] uppercase tracking-widest transition-all ${currentUser.biometricCredential ? 'bg-slate-200 dark:bg-slate-700 text-slate-500' : 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 active:scale-95'}`}
+                            >
+                                {isRegisteringBiometrics ? <Loader2 size={12} className="animate-spin inline mr-1"/> : null}
+                                {currentUser.biometricCredential ? 'Atualizar Digital' : 'Cadastrar Digital'}
+                            </button>
+                        </div>
+                        {currentUser.biometricCredential && (
+                             <div className="flex items-center gap-2 mt-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Biometria Ativa</span>
+                             </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Configurações Financeiras */}
                 <div className="space-y-4">

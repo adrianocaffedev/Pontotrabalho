@@ -11,6 +11,7 @@ import AbsenceModal from './components/AbsenceModal';
 import ManualLogModal from './components/ManualLogModal';
 import { fetchRemoteData, saveRemoteSettings, upsertRemoteLog, deleteRemoteLog, getAppUsers, keepAlive } from './services/dataService';
 import { Play, Coffee, StopCircle, Utensils, Settings as SettingsIcon, PlayCircle, DollarSign, Timer, CalendarOff, Sun, Database, Users, Clock as ClockIcon, LogOut, Loader2, User, Key, ArrowRight, Delete, Download, TrendingUp, ShieldAlert } from 'lucide-react';
+import { verifyBiometrics } from './services/biometricService';
 
 const STORAGE_KEY_THEME = 'ponto_ai_theme';
 const STORAGE_KEY_ACTIVE_USER_ID = 'ponto_ai_active_user_id';
@@ -463,13 +464,31 @@ const App: React.FC = () => {
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
+  const requireBiometricAuth = async (): Promise<boolean> => {
+    if (!activeUser || !activeUser.biometricCredential) return true; // Se não tem digital, ignora
+    
+    try {
+        const { success, error } = await verifyBiometrics(activeUser);
+        if (!success) {
+            alert("Autenticação biométrica falhou: " + error);
+            return false;
+        }
+        return true;
+    } catch (e) {
+        console.error("Biometric error:", e);
+        return false;
+    }
+  };
+
   const getLocalDateString = (d: Date) => {
      const offset = d.getTimezoneOffset();
      const local = new Date(d.getTime() - (offset * 60 * 1000));
      return local.toISOString().split('T')[0];
   };
 
-  const handleStartWork = () => {
+  const handleStartWork = async () => {
+    if (!await requireBiometricAuth()) return;
+
     const todayStr = getLocalDateString(new Date());
     const dailyLimitMs = (settings.dailyWorkHours || 8) * 60 * 60 * 1000;
     const totalTodayMs = logs.filter(l => l.date === todayStr).reduce((sum, l) => sum + (l.totalDurationMs || 0), 0);
@@ -485,8 +504,10 @@ const App: React.FC = () => {
     saveLogToRemote(newLog);
   };
 
-  const handleStartBreak = (type: 'LUNCH' | 'COFFEE') => {
+  const handleStartBreak = async (type: 'LUNCH' | 'COFFEE') => {
     if (!currentLogId) return;
+    if (!await requireBiometricAuth()) return;
+
     const newBreak: Break = { id: generateId(), startTime: new Date().toISOString(), type };
     setLogs(prev => prev.map(log => log.id === currentLogId ? { ...log, breaks: [...log.breaks, newBreak] } : log));
     setStatus(type === 'LUNCH' ? WorkStatus.ON_LUNCH : WorkStatus.ON_COFFEE);
@@ -494,8 +515,10 @@ const App: React.FC = () => {
     if (updated) saveLogToRemote({ ...updated, breaks: [...updated.breaks, newBreak] });
   };
 
-  const handleEndBreak = () => {
+  const handleEndBreak = async () => {
     if (!currentLogId) return;
+    if (!await requireBiometricAuth()) return;
+
     const nowIso = new Date().toISOString();
     setLogs(prev => prev.map(log => {
         if (log.id !== currentLogId) return log;
@@ -509,8 +532,10 @@ const App: React.FC = () => {
     setStatus(WorkStatus.WORKING);
   };
 
-  const handleEndWork = () => {
+  const handleEndWork = async () => {
     if (!currentLogId) return;
+    if (!await requireBiometricAuth()) return;
+
     const nowIso = new Date().toISOString();
     setLogs(prev => prev.map(log => {
       if (log.id === currentLogId) {
